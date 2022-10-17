@@ -111,17 +111,21 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    /*
     if (*(p + 1) != '\0' && *(p + 2) != '\0' && (!memcmp(p, "<<=", 3) || !memcmp(p, ">>=", 3))) {
       cur = new_token(TK_RESERVED, cur, p, 3);
       p += 2;
       continue;
     }
-    if (*(p + 1) != '\0' && (!memcmp(p, "==", 2) || !memcmp(p, "!=", 2))) {
+    */
+    if (*(p + 1) != '\0' && (!memcmp(p, "==", 2) || !memcmp(p, "!=", 2) ||
+                             !memcmp(p, "<=", 2) || !memcmp(p, ">=", 2))) {
       cur = new_token(TK_RESERVED, cur, p, 2);
       p += 2;
       continue;
     }
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' ||
+	*p == '<' || *p == '>') {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -141,6 +145,12 @@ Token *tokenize(char *p) {
 
 // 抽象構文木のノードの種類
 typedef enum {
+  ND_EQL, // ==
+  ND_NEQ, // !=
+  ND_LTE, // <=
+  ND_LT,  // <
+  ND_MTE, // >=
+  ND_MT,  // >
   ND_ADD, // +
   ND_SUB, // -
   ND_MUL, // *
@@ -174,11 +184,48 @@ Node *new_node_num(int val) {
 }
 
 
+Node *equality();
+Node *relational();
+Node *add();
 Node *mul();
 Node *primary();
 Node *unary();
 
 Node *expr() {
+  Node *node = equality();
+  return node;
+}
+
+Node *equality() {
+  Node *node = relational();
+  for(;;) {
+    if (consume("=="))
+      node = new_node(ND_EQL, node, relational());
+    else if (consume("!="))
+      node = new_node(ND_NEQ, node, relational());
+    else
+      return node;
+  }
+}
+
+Node *relational() {
+	Node *node = add();
+	for(;;) {
+		if(consume("<="))
+			node = new_node(ND_LTE, node, add());
+		else if (consume(">="))
+			node = new_node(ND_LTE, add(), node);
+		else if (consume("<"))
+			node = new_node(ND_LT, node, add());
+		else if (consume(">"))
+			node = new_node(ND_LT, add(), node);
+		else
+			return node;
+	}
+}
+
+
+Node *add() {
   Node *node = mul();
 
   for (;;) {
@@ -250,6 +297,26 @@ void gen(Node *node) {
   case ND_DIV:
     printf("  cqo\n");
     printf("  idiv rdi\n");
+    break;
+  case ND_EQL:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_NEQ:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LT:
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LTE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
     break;
   }
 
