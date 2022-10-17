@@ -149,8 +149,6 @@ typedef enum {
   ND_NEQ, // !=
   ND_LTE, // <=
   ND_LT,  // <
-  ND_MTE, // >=
-  ND_MT,  // >
   ND_ADD, // +
   ND_SUB, // -
   ND_MUL, // *
