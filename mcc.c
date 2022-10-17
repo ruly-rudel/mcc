@@ -111,6 +111,16 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (*(p + 1) != '\0' && *(p + 2) != '\0' && (!memcmp(p, "<<=", 3) || !memcmp(p, ">>=", 3))) {
+      cur = new_token(TK_RESERVED, cur, p, 3);
+      p += 2;
+      continue;
+    }
+    if (*(p + 1) != '\0' && (!memcmp(p, "==", 2) || !memcmp(p, "!=", 2))) {
+      cur = new_token(TK_RESERVED, cur, p, 2);
+      p += 2;
+      continue;
+    }
     if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
