@@ -31,5 +31,6 @@ assert 0 '10<10;'
 assert 1 '10>=10;'
 assert 0 '10>10;'
 assert 3 'a=1;b=2;c=a+b;'
+assert 6 'ag=3;re=2;df=ag*re;'
 
 echo OK

@@ -9,6 +9,8 @@ Token *token;
 
 Node *code[100];
 
+// ローカル変数
+extern LVar *locals;
 
 bool at_eof();
  
@@ -84,6 +86,7 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
+
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
   Token head;
@@ -122,10 +125,21 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
-      cur->len = 1;
-      continue;
+	if ('a' <= *p && *p <= 'z') {
+		char* begin = p;
+		int ident_len = 1;
+		p++;
+		while(*p) {
+			if ('a' <= *p && *p <= 'z' || '0' <= *p && *p <= '9') {
+				ident_len++;
+				p++;
+      				continue;
+			} else {
+      				cur = new_token(TK_IDENT, cur, begin, ident_len);
+				break;
+			}
+		}
+	continue;
     }
 
     error_at(p, "トークナイズできません");
