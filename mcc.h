@@ -8,4 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+void error(char *fmt, ...);
+
 #endif	// _mcc_h_
