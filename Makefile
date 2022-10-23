@@ -5,7 +5,7 @@ OBJS=$(SRCS:.c=.o)
 mcc: $(OBJS)
 	$(CC) -o mcc $(OBJS) $(LDFLAGS)
 
-$(OBJS):	mcc.h
+$(OBJS):	mcc.h	parse.h	codegen.h
 
 test:	mcc
 	./test.sh
