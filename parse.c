@@ -59,6 +59,17 @@ Token* consume_ident() {
 	}
 }
 
+bool consume_kind(int kind)
+{
+	if(token->kind != kind)
+	{
+		return false;
+	}
+
+	token = token->next;
+	return true;
+}
+
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
 void expect(char *op) {
@@ -91,6 +102,22 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   tok->len = len;
   cur->next = tok;
   return tok;
+}
+
+int is_alnum(char c) {
+  return ('a' <= c && c <= 'z') ||
+         ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') ||
+         (c == '_');
+}
+
+bool not_null(char* p, int n)
+{
+	while(n--)
+	{
+		if(*p++ =='\0') return false;
+	}
+	return true;
 }
 
 
@@ -131,6 +158,13 @@ Token *tokenize(char *p) {
       cur->val = strtol(p, &p, 10);
       continue;
     }
+
+	if (not_null(p, 7) && 
+			strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+		cur = new_token(TK_RETURN, cur, p, 6);
+		p += 6;
+		continue;
+	}
 
 	if ('a' <= *p && *p <= 'z') {
 		char* begin = p;
@@ -194,7 +228,12 @@ void program()
 
 Node *stmt()
 {
-	Node *node = expr();
+	Node *node;
+	if(consume_kind(TK_RETURN)) {
+		node = new_node(ND_RETURN, expr(), NULL);
+	} else {
+		node = expr();
+	}
 	expect(";");
 	return node;
 }

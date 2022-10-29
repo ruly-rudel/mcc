@@ -33,5 +33,7 @@ assert 0 '10>10;'
 assert 3 'a=1;b=2;c=a+b;'
 assert 6 'ag=3;re=2;df=ag*re;'
 assert 28 'ag=4;af=7;ae=ag*af;'
+assert 5 'return 5;'
+assert 14 'a = 3; b = 5 * 6 - 8; return a + b / 2;'
 
 echo OK
