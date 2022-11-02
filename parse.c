@@ -35,9 +35,19 @@ LVar *
 find_lvar (Token * tok)
 {
   for (LVar * var = locals; var; var = var->next)
-    if (var->len == tok->len && !memcmp (tok->str, var->name, var->len))
-      return var;
+    {
+      if (var->len == tok->len && !memcmp (tok->str, var->name, var->len))
+	{
+	  return var;
+	}
+    }
   return NULL;
+}
+
+bool
+not_token_str (char *op)
+{
+  return strlen (op) != token->len || memcmp (token->str, op, token->len);
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
@@ -45,9 +55,10 @@ find_lvar (Token * tok)
 bool
 consume (char *op)
 {
-  if (token->kind != TK_RESERVED ||
-      strlen (op) != token->len || memcmp (token->str, op, token->len))
-    return false;
+  if (token->kind != TK_RESERVED || not_token_str (op))
+    {
+      return false;
+    }
   token = token->next;
   return true;
 }
@@ -84,9 +95,10 @@ consume_kind (int kind)
 void
 expect (char *op)
 {
-  if (token->kind != TK_RESERVED ||
-      strlen (op) != token->len || memcmp (token->str, op, token->len))
-    error_at (token->str, "'%s'ではありません", op);
+  if (token->kind != TK_RESERVED || not_token_str (op))
+    {
+      error_at (token->str, "'%s'ではありません", op);
+    }
   token = token->next;
 }
 
@@ -96,7 +108,9 @@ int
 expect_number ()
 {
   if (token->kind != TK_NUM)
-    error_at (token->str, "数ではありません");
+    {
+      error_at (token->str, "数ではありません");
+    }
   int val = token->val;
   token = token->next;
   return val;
@@ -128,16 +142,39 @@ is_alnum (char c)
 }
 
 bool
-not_null (char *p, int n)
+not_null (const char *p, int n)
 {
   while (n--)
     {
       if (*p++ == '\0')
-	return false;
+	{
+	  return false;
+	}
     }
   return true;
 }
 
+/* s1: nullable string, s2: const string */
+int
+s_memcmp (const void *s1, const void *s2, size_t n)
+{
+  if (not_null (s1, n))
+    {
+      return memcmp (s1, s2, n);
+    }
+  else
+    {
+      return -1;
+    }
+}
+
+/* s1: nullable string, s2: const string */
+bool
+is_keyword (const char *s1, const char *s2)
+{
+  int n = strlen (s2);
+  return !s_memcmp (s1, s2, n) && !is_alnum (s1[n]);
+}
 
 // 入力文字列pをトークナイズしてそれを返す
 Token *
@@ -163,8 +200,8 @@ tokenize (char *p)
          continue;
          }
        */
-      if (*(p + 1) != '\0' && (!memcmp (p, "==", 2) || !memcmp (p, "!=", 2) ||
-			       !memcmp (p, "<=", 2) || !memcmp (p, ">=", 2)))
+      if (!s_memcmp (p, "==", 2) || !s_memcmp (p, "!=", 2)
+	  || !s_memcmp (p, "<=", 2) || !s_memcmp (p, ">=", 2))
 	{
 	  cur = new_token (TK_RESERVED, cur, p, 2);
 	  p += 2;
@@ -184,22 +221,21 @@ tokenize (char *p)
 	  continue;
 	}
 
-      if (not_null (p, 7) &&
-	  strncmp (p, "return", 6) == 0 && !is_alnum (p[6]))
+      if (is_keyword (p, "return"))
 	{
 	  cur = new_token (TK_RETURN, cur, p, 6);
 	  p += 6;
 	  continue;
 	}
 
-      if ('a' <= *p && *p <= 'z')
+      if (isalpha (*p))
 	{
 	  char *begin = p;
 	  int ident_len = 1;
 	  p++;
 	  while (*p)
 	    {
-	      if ('a' <= *p && *p <= 'z' || '0' <= *p && *p <= '9')
+	      if (is_alnum (*p))
 		{
 		  ident_len++;
 		  p++;
@@ -291,7 +327,9 @@ assign ()
 {
   Node *node = equality ();
   if (consume ("="))
-    node = new_node (ND_ASSIGN, node, assign ());
+    {
+      node = new_node (ND_ASSIGN, node, assign ());
+    }
   return node;
 }
 
@@ -302,11 +340,17 @@ equality ()
   for (;;)
     {
       if (consume ("=="))
-	node = new_node (ND_EQL, node, relational ());
+	{
+	  node = new_node (ND_EQL, node, relational ());
+	}
       else if (consume ("!="))
-	node = new_node (ND_NEQ, node, relational ());
+	{
+	  node = new_node (ND_NEQ, node, relational ());
+	}
       else
-	return node;
+	{
+	  return node;
+	}
     }
 }
 
@@ -317,15 +361,25 @@ relational ()
   for (;;)
     {
       if (consume ("<="))
-	node = new_node (ND_LTE, node, add ());
+	{
+	  node = new_node (ND_LTE, node, add ());
+	}
       else if (consume (">="))
-	node = new_node (ND_LTE, add (), node);
+	{
+	  node = new_node (ND_LTE, add (), node);
+	}
       else if (consume ("<"))
-	node = new_node (ND_LT, node, add ());
+	{
+	  node = new_node (ND_LT, node, add ());
+	}
       else if (consume (">"))
-	node = new_node (ND_LT, add (), node);
+	{
+	  node = new_node (ND_LT, add (), node);
+	}
       else
-	return node;
+	{
+	  return node;
+	}
     }
 }
 
@@ -338,11 +392,17 @@ add ()
   for (;;)
     {
       if (consume ("+"))
-	node = new_node (ND_ADD, node, mul ());
+	{
+	  node = new_node (ND_ADD, node, mul ());
+	}
       else if (consume ("-"))
-	node = new_node (ND_SUB, node, mul ());
+	{
+	  node = new_node (ND_SUB, node, mul ());
+	}
       else
-	return node;
+	{
+	  return node;
+	}
     }
 }
 
@@ -354,11 +414,17 @@ mul ()
   for (;;)
     {
       if (consume ("*"))
-	node = new_node (ND_MUL, node, primary ());
+	{
+	  node = new_node (ND_MUL, node, primary ());
+	}
       else if (consume ("/"))
-	node = new_node (ND_DIV, node, primary ());
+	{
+	  node = new_node (ND_DIV, node, primary ());
+	}
       else
-	return node;
+	{
+	  return node;
+	}
     }
 }
 
@@ -406,8 +472,12 @@ Node *
 unary ()
 {
   if (consume ("+"))
-    return primary ();
+    {
+      return primary ();
+    }
   if (consume ("-"))
-    return new_node (ND_SUB, new_node_num (0), primary ());
+    {
+      return new_node (ND_SUB, new_node_num (0), primary ());
+    }
   return primary ();
 }
