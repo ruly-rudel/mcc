@@ -35,5 +35,10 @@ assert 6 'ag=3;re=2;df=ag*re;'
 assert 28 'ag=4;af=7;ae=ag*af;'
 assert 5 'return 5;'
 assert 14 'a = 3; b = 5 * 6 - 8; return a + b / 2;'
+assert 10 'if ( 1 ) 10 ;'
+assert 12 'if ( 3 == 1 + 2 ) (6 * 2) ;'
+assert 11 'ag=4;af=7;if(ag + 3 == af) return ag + af;'
+assert 20 'if ( 2 == 3 ) return 10 ; return 20; '
+assert 5  'if ( 0 ) return 2; else return 5; 8;'
 
 echo OK

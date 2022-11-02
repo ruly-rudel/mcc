@@ -28,6 +28,24 @@ gen (Node * node)
       return;
     }
 
+  if (node->kind == ND_IF)
+    {
+      gen (node->lhs);
+      printf ("  pop rax\n");
+      printf ("  cmp rax, 0\n");
+      printf ("  je .Lelse0000\n");
+      gen (node->rhs);
+      printf ("  jmp .Lend0000\n");
+      printf (".Lelse0000:\n");
+      if (node->els != NULL)
+	{
+	  gen (node->els);
+	}
+      printf (".Lend0000:\n");
+      return;
+    }
+
+
   switch (node->kind)
     {
     case ND_NUM:

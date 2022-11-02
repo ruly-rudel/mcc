@@ -90,6 +90,19 @@ consume_kind (int kind)
   return true;
 }
 
+char *
+lookat ()
+{
+  if (token->kind == TK_RESERVED)
+    {
+      return token->str;
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
 void
@@ -228,6 +241,34 @@ tokenize (char *p)
 	  continue;
 	}
 
+      if (is_keyword (p, "if"))
+	{
+	  cur = new_token (TK_IF, cur, p, 2);
+	  p += 2;
+	  continue;
+	}
+
+      if (is_keyword (p, "else"))
+	{
+	  cur = new_token (TK_ELSE, cur, p, 4);
+	  p += 4;
+	  continue;
+	}
+
+      if (is_keyword (p, "while"))
+	{
+	  cur = new_token (TK_WHILE, cur, p, 5);
+	  p += 5;
+	  continue;
+	}
+
+      if (is_keyword (p, "for"))
+	{
+	  cur = new_token (TK_FOR, cur, p, 3);
+	  p += 3;
+	  continue;
+	}
+
       if (isalpha (*p))
 	{
 	  char *begin = p;
@@ -264,6 +305,18 @@ new_node (NodeKind kind, Node * lhs, Node * rhs)
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
+  node->els = NULL;
+  return node;
+}
+
+Node *
+new_node_3 (NodeKind kind, Node * lhs, Node * rhs, Node * els)
+{
+  Node *node = calloc (1, sizeof (Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  node->els = els;
   return node;
 }
 
@@ -306,12 +359,26 @@ stmt ()
   if (consume_kind (TK_RETURN))
     {
       node = new_node (ND_RETURN, expr (), NULL);
+      expect (";");
+    }
+  else if (consume_kind (TK_IF))
+    {
+      expect ("(");
+      Node *if_node = expr ();
+      expect (")");
+      Node *then_node = stmt ();
+      Node *else_node = NULL;
+      if (consume_kind (TK_ELSE))
+	{
+	  else_node = stmt ();
+	}
+      node = new_node_3 (ND_IF, if_node, then_node, else_node);
     }
   else
     {
       node = expr ();
+      expect (";");
     }
-  expect (";");
   return node;
 }
 
