@@ -45,5 +45,8 @@ assert 55 'j = 0; for(i = 1; i <= 10; i = i + 1) j = j + i; return j;'
 assert 55 'i = 0; j = 0; for( ; i <= 10; i = i + 1) j = j + i; return j;'
 assert 11 'i = 0; for( ; i <= 10; ) i = i + 1; return i;'
 assert 11 'for(i = 0 ; i <= 10; i = i + 1) ; return i;'
+assert 10 '{ 10; }'
+assert 20 '{ 10; 20; }'
+assert 7  'for(i = 0; i < 10; i = i + 1) { if (i == 5) return i + 2; }'
 
 echo OK

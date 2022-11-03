@@ -83,6 +83,18 @@ gen (Node * node)
       return ;
   }
 
+  if (node->kind == ND_BLOCK)
+  {
+	  if(node->lhs) gen(node->lhs);
+	  while(node->rhs)
+	  {
+		node = node->rhs;
+          	printf ("  pop rax\n");
+	  	gen(node->lhs);
+	  }
+	  return ;
+  }
+
   switch (node->kind)
     {
     case ND_NUM:

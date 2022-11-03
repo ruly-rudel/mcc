@@ -221,7 +221,7 @@ tokenize (char *p)
 	  continue;
 	}
       if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '('
-	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';')
+	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}')
 	{
 	  cur = new_token (TK_RESERVED, cur, p++, 1);
 	  continue;
@@ -370,7 +370,27 @@ Node *
 stmt ()
 {
   Node *node;
-  if (consume_kind (TK_RETURN))
+  if(consume("{"))
+  {
+	  Node * block_root = NULL;
+	  if(lookat() == NULL || *lookat() != '}')
+	  {
+		block_root = new_node (ND_BLOCK, stmt(), NULL);
+		node = block_root;
+	  	while(lookat() == NULL || *lookat() != '}')
+	  	{
+			node->rhs = new_node(ND_BLOCK, stmt(), NULL);
+			node = node->rhs;
+	  	}
+	  }
+	  else
+	  {
+		block_root = new_node (ND_BLOCK, NULL, NULL);
+	  }
+	  expect("}");
+	  node = block_root;
+  }
+  else if (consume_kind (TK_RETURN))
     {
       node = new_node (ND_RETURN, expr (), NULL);
       expect (";");
