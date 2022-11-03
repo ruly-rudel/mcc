@@ -374,6 +374,13 @@ stmt ()
 	}
       node = new_node_3 (ND_IF, if_node, then_node, else_node);
     }
+  else if (consume_kind (TK_WHILE))
+  {
+      expect ("(");
+      Node *condition_node = expr ();
+      expect (")");
+      node = new_node (ND_WHILE, condition_node, stmt ()) ;
+  }
   else
     {
       node = expr ();

@@ -53,6 +53,19 @@ gen (Node * node)
       return;
     }
 
+  if (node->kind == ND_WHILE)
+  {
+      int id = gen_label_id();
+      printf (".Lbegin%06d:\n", id);
+      gen (node->lhs);
+      printf ("  pop rax\n");
+      printf ("  cmp rax, 0\n");
+      printf ("  je .Lend%06d\n", id);
+      gen (node->rhs);
+      printf ("  jmp .Lbegin%06d\n", id);
+      printf (".Lend%06d:\n", id);
+      return ;
+  }
 
   switch (node->kind)
     {
