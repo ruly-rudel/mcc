@@ -9,6 +9,6 @@
 #include <string.h>
 
 
-void error(char *fmt, ...);
+void error (char *fmt, ...);
 
-#endif	// _mcc_h_
+#endif // _mcc_h_
