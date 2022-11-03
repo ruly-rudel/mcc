@@ -39,6 +39,6 @@ assert 10 'if ( 1 ) 10 ;'
 assert 12 'if ( 3 == 1 + 2 ) (6 * 2) ;'
 assert 11 'ag=4;af=7;if(ag + 3 == af) return ag + af;'
 assert 20 'if ( 2 == 3 ) return 10 ; return 20; '
-assert 5  'if ( 0 ) return 2; else return 5; 8;'
+assert 3  'if ( 1 ) if ( 0 ) return 2; else return 3; else return 4; 8;'
 
 echo OK

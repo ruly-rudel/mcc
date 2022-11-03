@@ -3,6 +3,13 @@
 #include "codegen.h"
 
 
+static int gen_label_var = 0;
+
+int gen_label_id()
+{
+	return gen_label_var++;
+}
+
 void
 gen_lval (Node * node)
 {
@@ -30,18 +37,19 @@ gen (Node * node)
 
   if (node->kind == ND_IF)
     {
+      int id = gen_label_id();
       gen (node->lhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
-      printf ("  je .Lelse0000\n");
+      printf ("  je .Lelse%06d\n", id);
       gen (node->rhs);
-      printf ("  jmp .Lend0000\n");
-      printf (".Lelse0000:\n");
+      printf ("  jmp .Lend%06d\n", id);
+      printf (".Lelse%06d:\n", id);
       if (node->els != NULL)
 	{
 	  gen (node->els);
 	}
-      printf (".Lend0000:\n");
+      printf (".Lend%06d:\n", id);
       return;
     }
 
