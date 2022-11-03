@@ -67,9 +67,10 @@ typedef struct Node Node;
 struct Node
 {
   NodeKind kind;		// ノードの型
-  Node *lhs;			// 左辺
-  Node *rhs;			// 右辺
-  Node *els;			// for else
+  Node *lhs;			// 左辺, for A in for(A; B; C) D;
+  Node *rhs;			// 右辺, for B in for(A; B; C) D;
+  Node *els;			// for else,  for C in for(A; B; C) D;
+  Node *body;			// for D in for(A; B; C) D
   int val;			// kindがND_NUMの場合のみ使う
   int offset;			// kindがND_LVARの場合のみ使う
 };

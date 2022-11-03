@@ -41,5 +41,9 @@ assert 11 'ag=4;af=7;if(ag + 3 == af) return ag + af;'
 assert 20 'if ( 2 == 3 ) return 10 ; return 20; '
 assert 3  'if ( 1 ) if ( 0 ) return 2; else return 3; else return 4; 8;'
 assert 32 'a = 5; b = 2; while( a = a - 1 ) b = b * 2; return b;'
+assert 55 'j = 0; for(i = 1; i <= 10; i = i + 1) j = j + i; return j;'
+assert 55 'i = 0; j = 0; for( ; i <= 10; i = i + 1) j = j + i; return j;'
+assert 11 'i = 0; for( ; i <= 10; ) i = i + 1; return i;'
+assert 11 'for(i = 0 ; i <= 10; i = i + 1) ; return i;'
 
 echo OK

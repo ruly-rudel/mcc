@@ -306,6 +306,7 @@ new_node (NodeKind kind, Node * lhs, Node * rhs)
   node->lhs = lhs;
   node->rhs = rhs;
   node->els = NULL;
+  node->body = NULL;
   return node;
 }
 
@@ -317,6 +318,19 @@ new_node_3 (NodeKind kind, Node * lhs, Node * rhs, Node * els)
   node->lhs = lhs;
   node->rhs = rhs;
   node->els = els;
+  node->body = NULL;
+  return node;
+}
+
+Node *
+new_node_4 (NodeKind kind, Node * lhs, Node * rhs, Node * els, Node * body)
+{
+  Node *node = calloc (1, sizeof (Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  node->els = els;
+  node->body = body;
   return node;
 }
 
@@ -380,6 +394,40 @@ stmt ()
       Node *condition_node = expr ();
       expect (")");
       node = new_node (ND_WHILE, condition_node, stmt ()) ;
+  }
+  else if (consume_kind (TK_FOR))
+  {
+      expect ("(");
+	  Node *initial_node = NULL;
+	  Node *condition_node = NULL;
+	  Node *inclemental_node = NULL;
+	  Node *body_node = NULL;
+	  if(lookat() == NULL || *lookat() != ';')
+	  {
+		initial_node = expr ();
+	  }
+	  expect(";");
+	  
+	  if(lookat() == NULL || *lookat() != ';')
+	  {
+		condition_node = expr ();
+	  }
+	  expect(";");
+
+	  if(lookat() == NULL || *lookat() != ')')
+	  {
+		inclemental_node = expr ();
+	  }
+          expect (")");
+	  if(lookat() == NULL || *lookat() != ';')
+	  {
+		body_node = stmt ();
+	  }
+	  else
+	  {
+		  expect(";");
+	  }
+      node = new_node_4(ND_FOR, initial_node, condition_node, inclemental_node, body_node);
   }
   else
     {

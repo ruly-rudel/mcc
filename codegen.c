@@ -67,6 +67,22 @@ gen (Node * node)
       return ;
   }
 
+  if (node->kind == ND_FOR)
+  {
+      int id = gen_label_id();
+      if(node->lhs) gen (node->lhs);
+      printf (".Lbegin%06d:\n", id);
+      if(node->rhs) gen (node->rhs);
+      printf ("  pop rax\n");
+      printf ("  cmp rax, 0\n");
+      printf ("  je .Lend%06d\n", id);
+      if(node->body) gen (node->body);
+      if(node->els) gen (node->els);
+      printf ("  jmp .Lbegin%06d\n", id);
+      printf (".Lend%06d:\n", id);
+      return ;
+  }
+
   switch (node->kind)
     {
     case ND_NUM:
