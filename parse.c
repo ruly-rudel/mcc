@@ -28,6 +28,7 @@ error_at (char *loc, char *fmt, ...)
   vfprintf (stderr, fmt, ap);
   fprintf (stderr, "\n");
   exit (1);
+  foo();
 }
 
 // 変数を名前で検索する。見つからなかった場合はNULLを返す。
@@ -585,25 +586,39 @@ primary ()
   Token *tok = consume_ident ();
   if (tok)
     {
-      Node *node = calloc (1, sizeof (Node));
-      node->kind = ND_LVAR;
-
-      LVar *lvar = find_lvar (tok);
-      if (lvar)
-	{
-	  node->offset = lvar->offset;
-	}
+      if(lookat() != NULL && *lookat() == '(')
+      {	// funcation call
+        consume ("(");
+        expect (")");
+        Node *node = calloc (1, sizeof (Node));
+        node->kind = ND_CALL;
+        node->identity = calloc(1, tok->len + 1);
+	memcpy(node->identity, tok->str, tok->len);
+	node->identity[tok->len] = '\0';
+	return node;
+      }
       else
-	{
-	  lvar = calloc (1, sizeof (LVar));
-	  lvar->next = locals;
-	  lvar->name = tok->str;
-	  lvar->len = tok->len;
-	  lvar->offset = locals ? locals->offset + 8 : 0;
-	  node->offset = lvar->offset;
-	  locals = lvar;
-	}
-      return node;
+      {
+        Node *node = calloc (1, sizeof (Node));
+        node->kind = ND_LVAR;
+  
+        LVar *lvar = find_lvar (tok);
+        if (lvar)
+  	{
+  	  node->offset = lvar->offset;
+  	}
+        else
+  	{
+  	  lvar = calloc (1, sizeof (LVar));
+  	  lvar->next = locals;
+  	  lvar->name = tok->str;
+  	  lvar->len = tok->len;
+  	  lvar->offset = locals ? locals->offset + 8 : 0;
+  	  node->offset = lvar->offset;
+  	  locals = lvar;
+  	}
+        return node;
+      }
     }
 
   // そうでなければ数値のはず
