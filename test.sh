@@ -49,5 +49,7 @@ assert 10 '{ 10; }'
 assert 20 '{ 10; 20; }'
 assert 7  'for(i = 0; i < 10; i = i + 1) { if (i == 5) return i + 2; }'
 assert 10 'foo();'
+assert 3  'bar(1, 2);'
+assert 3  'a=1;bar(a, 2);'
 
 echo OK

@@ -28,7 +28,6 @@ error_at (char *loc, char *fmt, ...)
   vfprintf (stderr, fmt, ap);
   fprintf (stderr, "\n");
   exit (1);
-  foo();
 }
 
 // 変数を名前で検索する。見つからなかった場合はNULLを返す。
@@ -222,7 +221,7 @@ tokenize (char *p)
 	  continue;
 	}
       if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '('
-	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}')
+	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}' || *p == ',')
 	{
 	  cur = new_token (TK_RESERVED, cur, p++, 1);
 	  continue;
@@ -572,6 +571,26 @@ mul ()
 }
 
 Node *
+commas ()
+{
+	Node* node = NULL;
+	node = calloc(1, sizeof (Node));
+	node->kind = ND_COMMA;
+	node->lhs  = expr();
+	if(lookat() != NULL && *lookat() == ',')
+	{
+		expect(",");
+		node->rhs = commas();
+		return node;
+	}
+	else
+	{
+		node->rhs = NULL;
+		return node;
+	}
+}
+
+Node *
 primary ()
 {
   // 次のトークンが"("なら、"(" expr ")"のはず
@@ -589,12 +608,20 @@ primary ()
       if(lookat() != NULL && *lookat() == '(')
       {	// funcation call
         consume ("(");
-        expect (")");
         Node *node = calloc (1, sizeof (Node));
         node->kind = ND_CALL;
+        if(lookat() != NULL && *lookat() == ')')
+	{
+		node->lhs = NULL;
+	}
+	else
+	{
+		node->lhs  = commas();
+	}
         node->identity = calloc(1, tok->len + 1);
 	memcpy(node->identity, tok->str, tok->len);
 	node->identity[tok->len] = '\0';
+        expect (")");
 	return node;
       }
       else
