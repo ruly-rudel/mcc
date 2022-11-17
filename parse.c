@@ -53,14 +53,24 @@ not_token_str (char *op)
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
 // 真を返す。それ以外の場合には偽を返す。
 bool
-consume (char *op)
+look_at (char *op)
 {
   if (token->kind != TK_RESERVED || not_token_str (op))
     {
       return false;
     }
-  token = token->next;
   return true;
+}
+
+bool
+consume (char *op)
+{
+	bool ret = look_at(op);
+	if(ret)
+	{
+		token = token->next;
+	}
+	return ret;
 }
 
 Token *
@@ -71,31 +81,6 @@ consume_ident ()
       Token *token_ret = token;
       token = token->next;
       return token_ret;
-    }
-  else
-    {
-      return NULL;
-    }
-}
-
-bool
-consume_kind (int kind)
-{
-  if (token->kind != kind)
-    {
-      return false;
-    }
-
-  token = token->next;
-  return true;
-}
-
-char *
-lookat ()
-{
-  if (token->kind == TK_RESERVED)
-    {
-      return token->str;
     }
   else
     {
@@ -189,6 +174,33 @@ is_keyword (const char *s1, const char *s2)
   return !s_memcmp (s1, s2, n) && !is_alnum (s1[n]);
 }
 
+
+char* tokens[] = {
+	"==",
+	"!=",
+	"<=",
+	">=",
+	"+",
+	"-",
+	"*",
+	"/",
+	"(",
+	")",
+	"<",
+	">",
+	"=",
+	";",
+	"{",
+	"}",
+	",",
+};
+char* keywords[] = {
+	"return",
+	"if",
+	"else",
+	"while",
+	"for"
+};
 // 入力文字列pをトークナイズしてそれを返す
 Token *
 tokenize (char *p)
@@ -206,92 +218,63 @@ tokenize (char *p)
 	  continue;
 	}
 
-      /*
-         if (*(p + 1) != '\0' && *(p + 2) != '\0' && (!memcmp(p, "<<=", 3) || !memcmp(p, ">>=", 3))) {
-         cur = new_token(TK_RESERVED, cur, p, 3);
-         p += 2;
-         continue;
-         }
-       */
-      if (!s_memcmp (p, "==", 2) || !s_memcmp (p, "!=", 2)
-	  || !s_memcmp (p, "<=", 2) || !s_memcmp (p, ">=", 2))
-	{
-	  cur = new_token (TK_RESERVED, cur, p, 2);
-	  p += 2;
-	  continue;
-	}
-      if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '('
-	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}' || *p == ',')
-	{
-	  cur = new_token (TK_RESERVED, cur, p++, 1);
-	  continue;
-	}
+      bool has_token = false;
+      for(int i = 0; i < sizeof(tokens) / sizeof(tokens[0]); i++)
+      {
+	      int len = strlen(tokens[i]);
+	      if (s_memcmp(p, tokens[i], len) == 0)
+	      {
+		      cur = new_token(TK_RESERVED, cur, p, len);
+		      p += len;
+		      has_token = true;
+	      }
+      }
 
-      if (isdigit (*p))
-	{
-	  cur = new_token (TK_NUM, cur, p, -1);	// fix -1 to digit length
-	  cur->val = strtol (p, &p, 10);
-	  continue;
-	}
+      bool has_keyword = false;
+      for(int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++)
+      {
+	      if(is_keyword(p, keywords[i]))
+	      {
+		      int len = strlen(keywords[i]);
+		      cur = new_token(TK_RESERVED, cur, p, len);
+		      p += len;
+		      has_keyword = true;
+		      break;
+	      }
+      }
 
-      if (is_keyword (p, "return"))
-	{
-	  cur = new_token (TK_RETURN, cur, p, 6);
-	  p += 6;
-	  continue;
-	}
-
-      if (is_keyword (p, "if"))
-	{
-	  cur = new_token (TK_IF, cur, p, 2);
-	  p += 2;
-	  continue;
-	}
-
-      if (is_keyword (p, "else"))
-	{
-	  cur = new_token (TK_ELSE, cur, p, 4);
-	  p += 4;
-	  continue;
-	}
-
-      if (is_keyword (p, "while"))
-	{
-	  cur = new_token (TK_WHILE, cur, p, 5);
-	  p += 5;
-	  continue;
-	}
-
-      if (is_keyword (p, "for"))
-	{
-	  cur = new_token (TK_FOR, cur, p, 3);
-	  p += 3;
-	  continue;
-	}
-
-      if (isalpha (*p))
-	{
-	  char *begin = p;
-	  int ident_len = 1;
-	  p++;
-	  while (*p)
-	    {
-	      if (is_alnum (*p))
+      if(!has_keyword && !has_token) {
+	      if (isdigit (*p))
 		{
-		  ident_len++;
-		  p++;
+		  cur = new_token (TK_NUM, cur, p, -1);	// fix -1 to digit length
+		  cur->val = strtol (p, &p, 10);
 		  continue;
 		}
-	      else
-		{
-		  cur = new_token (TK_IDENT, cur, begin, ident_len);
-		  break;
-		}
-	    }
-	  continue;
-	}
 
-      error_at (p, "トークナイズできません");
+	      if (isalpha (*p))
+		{
+		  char *begin = p;
+		  int ident_len = 1;
+		  p++;
+		  while (*p)
+		    {
+		      if (is_alnum (*p))
+			{
+			  ident_len++;
+			  p++;
+			  continue;
+			}
+		      else
+			{
+			  cur = new_token (TK_IDENT, cur, begin, ident_len);
+			  break;
+			}
+		    }
+		  continue;
+		}
+              error_at (p, "トークナイズできません");
+      }
+
     }
 
   new_token (TK_EOF, cur, p, 0);
@@ -372,11 +355,11 @@ block ()
 {
 	  Node *node = NULL;
 	  Node * block_root = NULL;
-	  if(lookat() == NULL || *lookat() != '}')
+	  if(!look_at("}"))
 	  {
 		block_root = new_node (ND_BLOCK, stmt(), NULL);
 		node = block_root;
-	  	while(lookat() == NULL || *lookat() != '}')
+	        while(!look_at("}"))
 	  	{
 			node->rhs = new_node(ND_BLOCK, stmt(), NULL);
 			node = node->rhs;
@@ -398,56 +381,56 @@ stmt ()
   {
 	  node = block();
   }
-  else if (consume_kind (TK_RETURN))
+  else if (consume ("return"))
     {
       node = new_node (ND_RETURN, expr (), NULL);
       expect (";");
     }
-  else if (consume_kind (TK_IF))
+  else if (consume ("if"))
     {
       expect ("(");
       Node *if_node = expr ();
       expect (")");
       Node *then_node = stmt ();
       Node *else_node = NULL;
-      if (consume_kind (TK_ELSE))
+      if (consume ("else"))
 	{
 	  else_node = stmt ();
 	}
       node = new_node_3 (ND_IF, if_node, then_node, else_node);
     }
-  else if (consume_kind (TK_WHILE))
+  else if (consume ("while"))
   {
       expect ("(");
       Node *condition_node = expr ();
       expect (")");
       node = new_node (ND_WHILE, condition_node, stmt ()) ;
   }
-  else if (consume_kind (TK_FOR))
+  else if (consume ("for"))
   {
       expect ("(");
 	  Node *initial_node = NULL;
 	  Node *condition_node = NULL;
 	  Node *inclemental_node = NULL;
 	  Node *body_node = NULL;
-	  if(lookat() == NULL || *lookat() != ';')
+	  if(!look_at(";"))
 	  {
 		initial_node = expr ();
 	  }
 	  expect(";");
 	  
-	  if(lookat() == NULL || *lookat() != ';')
+	  if(!look_at(";"))
 	  {
 		condition_node = expr ();
 	  }
 	  expect(";");
 
-	  if(lookat() == NULL || *lookat() != ')')
+	  if(!look_at(")"))
 	  {
 		inclemental_node = expr ();
 	  }
           expect (")");
-	  if(lookat() == NULL || *lookat() != ';')
+	  if(!look_at(";"))
 	  {
 		body_node = stmt ();
 	  }
@@ -585,7 +568,7 @@ commas ()
 	node = calloc(1, sizeof (Node));
 	node->kind = ND_COMMA;
 	node->lhs  = expr();
-	if(lookat() != NULL && *lookat() == ',')
+	if(look_at(","))
 	{
 		expect(",");
 		node->rhs = commas();
@@ -613,12 +596,12 @@ primary ()
   Token *tok = consume_ident ();
   if (tok)
     {
-      if(lookat() != NULL && *lookat() == '(')
+      if(look_at("("))
       {	// funcation call
         consume ("(");
         Node *node = calloc (1, sizeof (Node));
         node->kind = ND_CALL;
-        if(lookat() != NULL && *lookat() == ')')
+        if(look_at(")"))
 	{
 		node->lhs = NULL;
 	}
