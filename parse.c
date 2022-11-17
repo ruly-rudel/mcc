@@ -7,7 +7,7 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
-Node *code[100];
+Func *func[100];
 
 // ローカル変数
 LVar *locals = NULL;
@@ -360,11 +360,16 @@ void
 program ()
 {
   int i = 0;
+  func[i] = calloc(1, sizeof(Func));
+  func[i]->locals = NULL;
+  func[i]->ast_root = new_node (ND_BLOCK, stmt(), NULL);
+  Node *node = func[i]->ast_root;
   while (!at_eof ())
     {
-      code[i++] = stmt ();
+	    node->rhs = new_node(ND_BLOCK, stmt(), NULL);
+	    node = node->rhs;
     }
-  code[i] = NULL;
+  func[++i] = NULL;
 }
 
 Node *
