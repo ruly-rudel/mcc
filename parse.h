@@ -56,12 +56,12 @@ typedef enum
   ND_FOR,			// for
   ND_BLOCK,			// {} block
   ND_CALL,			// function call
-  ND_COMMA,			// function call
+  ND_COMMA,			// comma
 } NodeKind;
 
-typedef struct Node Node;
 
 // 抽象構文木のノードの型
+typedef struct Node Node;
 struct Node
 {
   NodeKind kind;		// ノードの型
@@ -72,8 +72,15 @@ struct Node
   int val;			// kindがND_NUMの場合のみ使う
   int offset;			// kindがND_LVARの場合のみ使う
   char *identity;		// kindがND_CALLの場合のみ使う
-  int id_len;			// 同上
 };
+
+typedef struct Func Func;
+struct Func
+{
+  Node* ast_root;
+  LVar* locals;
+};
+
 
 // 入力プログラム
 extern char *user_input;
@@ -81,7 +88,7 @@ extern char *user_input;
 // 現在着目しているトークン
 extern Token *token;
 
-extern Node *code[100];
+extern Func *func[100];
 
 // ローカル変数
 extern LVar *locals;
