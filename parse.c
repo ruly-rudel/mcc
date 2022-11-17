@@ -221,7 +221,7 @@ tokenize (char *p)
 	  continue;
 	}
       if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '('
-	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}')
+	  || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';' || *p == '{' ||  *p == '}' || *p == ',')
 	{
 	  cur = new_token (TK_RESERVED, cur, p++, 1);
 	  continue;
@@ -345,6 +345,7 @@ new_node_num (int val)
 
 
 void program ();
+Node *block ();
 Node *stmt ();
 Node *expr ();
 Node *assign ();
@@ -367,11 +368,9 @@ program ()
 }
 
 Node *
-stmt ()
+block ()
 {
-  Node *node;
-  if(consume("{"))
-  {
+	  Node *node = NULL;
 	  Node * block_root = NULL;
 	  if(lookat() == NULL || *lookat() != '}')
 	  {
@@ -388,7 +387,16 @@ stmt ()
 		block_root = new_node (ND_BLOCK, NULL, NULL);
 	  }
 	  expect("}");
-	  node = block_root;
+	  return block_root;
+}
+
+Node *
+stmt ()
+{
+  Node *node;
+  if(consume("{"))
+  {
+	  node = block();
   }
   else if (consume_kind (TK_RETURN))
     {
@@ -571,6 +579,26 @@ mul ()
 }
 
 Node *
+commas ()
+{
+	Node* node = NULL;
+	node = calloc(1, sizeof (Node));
+	node->kind = ND_COMMA;
+	node->lhs  = expr();
+	if(lookat() != NULL && *lookat() == ',')
+	{
+		expect(",");
+		node->rhs = commas();
+		return node;
+	}
+	else
+	{
+		node->rhs = NULL;
+		return node;
+	}
+}
+
+Node *
 primary ()
 {
   // 次のトークンが"("なら、"(" expr ")"のはず
@@ -585,25 +613,47 @@ primary ()
   Token *tok = consume_ident ();
   if (tok)
     {
-      Node *node = calloc (1, sizeof (Node));
-      node->kind = ND_LVAR;
-
-      LVar *lvar = find_lvar (tok);
-      if (lvar)
+      if(lookat() != NULL && *lookat() == '(')
+      {	// funcation call
+        consume ("(");
+        Node *node = calloc (1, sizeof (Node));
+        node->kind = ND_CALL;
+        if(lookat() != NULL && *lookat() == ')')
 	{
-	  node->offset = lvar->offset;
+		node->lhs = NULL;
 	}
+	else
+	{
+		node->lhs  = commas();
+	}
+        node->identity = calloc(1, tok->len + 1);
+	memcpy(node->identity, tok->str, tok->len);
+	node->identity[tok->len] = '\0';
+        expect (")");
+	return node;
+      }
       else
-	{
-	  lvar = calloc (1, sizeof (LVar));
-	  lvar->next = locals;
-	  lvar->name = tok->str;
-	  lvar->len = tok->len;
-	  lvar->offset = locals ? locals->offset + 8 : 0;
-	  node->offset = lvar->offset;
-	  locals = lvar;
-	}
-      return node;
+      {
+        Node *node = calloc (1, sizeof (Node));
+        node->kind = ND_LVAR;
+  
+        LVar *lvar = find_lvar (tok);
+        if (lvar)
+  	{
+  	  node->offset = lvar->offset;
+  	}
+        else
+  	{
+  	  lvar = calloc (1, sizeof (LVar));
+  	  lvar->next = locals;
+  	  lvar->name = tok->str;
+  	  lvar->len = tok->len;
+  	  lvar->offset = locals ? locals->offset + 8 : 0;
+  	  node->offset = lvar->offset;
+  	  locals = lvar;
+  	}
+        return node;
+      }
     }
 
   // そうでなければ数値のはず

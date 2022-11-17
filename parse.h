@@ -60,6 +60,8 @@ typedef enum
   ND_WHILE,			// while
   ND_FOR,			// for
   ND_BLOCK,			// {} block
+  ND_CALL,			// function call
+  ND_COMMA,			// function call
 } NodeKind;
 
 typedef struct Node Node;
@@ -74,6 +76,8 @@ struct Node
   Node *body;			// for D in for(A; B; C) D
   int val;			// kindがND_NUMの場合のみ使う
   int offset;			// kindがND_LVARの場合のみ使う
+  char *identity;		// kindがND_CALLの場合のみ使う
+  int id_len;			// 同上
 };
 
 // 入力プログラム

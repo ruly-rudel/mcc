@@ -5,6 +5,18 @@
 
 static int gen_label_var = 0;
 
+int count_lvar()
+{
+	int r = 0;
+	LVar* p = locals;
+	while(p)
+	{
+		r++;
+		p = p->next;
+	}
+	return r;
+}
+
 int gen_label_id()
 {
 	return gen_label_var++;
@@ -95,6 +107,34 @@ gen (Node * node)
 	  return ;
   }
 
+  if (node->kind == ND_CALL)
+  {
+	  // prepare arguments
+	  Node *comma = node->lhs;
+	  int arg_num;
+	  for(arg_num = 0; arg_num < 6; arg_num++)
+	  {
+		if(comma && comma->lhs)
+		{
+		    gen(comma->lhs);
+		    comma = comma->rhs;
+		}
+		else
+		{
+		    printf ("  push 0\n");	// dummy args
+		}
+	  }
+          printf ("  pop R9\n");
+          printf ("  pop R8\n");
+          printf ("  pop RCX\n");
+          printf ("  pop RDX\n");
+          printf ("  pop RSI\n");
+          printf ("  pop RDI\n");
+          printf ("  call %s\n", node->identity);
+          printf ("  push RAX\n");
+	  return ;
+  }
+
   switch (node->kind)
     {
     case ND_NUM:
@@ -176,10 +216,11 @@ parse_and_code_gen (char *src)
   printf ("main:\n");
 
   // プロローグ
-  // 変数26個分の領域を確保する
   printf ("  push rbp\n");
   printf ("  mov rbp, rsp\n");
-  printf ("  sub rsp, 208\n");
+  printf ("  sub rsp, %d\n", 8 * count_lvar());
+  // 変数26個分の領域を確保する
+  //printf ("  sub rsp, 208\n");
 
   // 先頭の式から順にコード生成
   for (int i = 0; code[i]; i++)
