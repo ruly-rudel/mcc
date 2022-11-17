@@ -77,6 +77,7 @@ struct Node
 typedef struct Func Func;
 struct Func
 {
+  char* name;
   Node* ast_root;
   LVar* locals;
 };

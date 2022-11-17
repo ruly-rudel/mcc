@@ -224,8 +224,8 @@ parse_and_code_gen (char *src)
   for (int i = 0; func[i]; i++)
     {
       locals = func[i]->locals;
-      printf (".globl main\n");
-      printf ("main:\n");
+      printf (".globl %s\n", func[i]->name);
+      printf ("%s:\n", func[i]->name);
 
       // プロローグ
       printf ("  push rbp\n");
