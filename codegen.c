@@ -5,21 +5,23 @@
 
 static int gen_label_var = 0;
 
-int count_lvar()
+int
+count_lvar ()
 {
-	int r = 0;
-	LVar* p = locals;
-	while(p)
-	{
-		r++;
-		p = p->next;
-	}
-	return r;
+  int r = 0;
+  LVar *p = locals;
+  while (p)
+    {
+      r++;
+      p = p->next;
+    }
+  return r;
 }
 
-int gen_label_id()
+int
+gen_label_id ()
 {
-	return gen_label_var++;
+  return gen_label_var++;
 }
 
 void
@@ -49,7 +51,7 @@ gen (Node * node)
 
   if (node->kind == ND_IF)
     {
-      int id = gen_label_id();
+      int id = gen_label_id ();
       gen (node->lhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
@@ -66,8 +68,8 @@ gen (Node * node)
     }
 
   if (node->kind == ND_WHILE)
-  {
-      int id = gen_label_id();
+    {
+      int id = gen_label_id ();
       printf (".Lbegin%06d:\n", id);
       gen (node->lhs);
       printf ("  pop rax\n");
@@ -76,64 +78,69 @@ gen (Node * node)
       gen (node->rhs);
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
-      return ;
-  }
+      return;
+    }
 
   if (node->kind == ND_FOR)
-  {
-      int id = gen_label_id();
-      if(node->lhs) gen (node->lhs);
+    {
+      int id = gen_label_id ();
+      if (node->lhs)
+	gen (node->lhs);
       printf (".Lbegin%06d:\n", id);
-      if(node->rhs) gen (node->rhs);
+      if (node->rhs)
+	gen (node->rhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
       printf ("  je .Lend%06d\n", id);
-      if(node->body) gen (node->body);
-      if(node->els) gen (node->els);
+      if (node->body)
+	gen (node->body);
+      if (node->els)
+	gen (node->els);
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
-      return ;
-  }
+      return;
+    }
 
   if (node->kind == ND_BLOCK)
-  {
-	  if(node->lhs) gen(node->lhs);
-	  while(node->rhs)
-	  {
-		node = node->rhs;
-          	printf ("  pop rax\n");
-	  	gen(node->lhs);
-	  }
-	  return ;
-  }
+    {
+      if (node->lhs)
+	gen (node->lhs);
+      while (node->rhs)
+	{
+	  node = node->rhs;
+	  printf ("  pop rax\n");
+	  gen (node->lhs);
+	}
+      return;
+    }
 
   if (node->kind == ND_CALL)
-  {
-	  // prepare arguments
-	  Node *comma = node->lhs;
-	  int arg_num;
-	  for(arg_num = 0; arg_num < 6; arg_num++)
-	  {
-		if(comma && comma->lhs)
-		{
-		    gen(comma->lhs);
-		    comma = comma->rhs;
-		}
-		else
-		{
-		    printf ("  push 0\n");	// dummy args
-		}
-	  }
-          printf ("  pop R9\n");
-          printf ("  pop R8\n");
-          printf ("  pop RCX\n");
-          printf ("  pop RDX\n");
-          printf ("  pop RSI\n");
-          printf ("  pop RDI\n");
-          printf ("  call %s\n", node->identity);
-          printf ("  push RAX\n");
-	  return ;
-  }
+    {
+      // prepare arguments
+      Node *comma = node->lhs;
+      int arg_num;
+      for (arg_num = 0; arg_num < 6; arg_num++)
+	{
+	  if (comma && comma->lhs)
+	    {
+	      gen (comma->lhs);
+	      comma = comma->rhs;
+	    }
+	  else
+	    {
+	      printf ("  push 0\n");	// dummy args
+	    }
+	}
+      printf ("  pop R9\n");
+      printf ("  pop R8\n");
+      printf ("  pop RCX\n");
+      printf ("  pop RDX\n");
+      printf ("  pop RSI\n");
+      printf ("  pop RDI\n");
+      printf ("  call %s\n", node->identity);
+      printf ("  push RAX\n");
+      return;
+    }
 
   switch (node->kind)
     {
