@@ -361,13 +361,15 @@ program ()
 {
   int i = 0;
   func[i] = calloc(1, sizeof(Func));
-  func[i]->locals = NULL;
-  func[i]->ast_root = new_node (ND_BLOCK, stmt(), NULL);
+  expect("{");
+  func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
+  func[i]->locals = locals;
   Node *node = func[i]->ast_root;
   while (!at_eof ())
     {
-	    node->rhs = new_node(ND_BLOCK, stmt(), NULL);
+	    node->rhs = new_node(ND_BLOCK, block(), NULL);
 	    node = node->rhs;
+	    func[i]->locals = locals;
     }
   func[++i] = NULL;
 }

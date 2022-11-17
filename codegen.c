@@ -216,6 +216,7 @@ parse_and_code_gen (char *src)
   // 先頭の式から順にコード生成
   for (int i = 0; func[i]; i++)
     {
+      locals = func[i]->locals;
       printf (".globl main\n");
       printf ("main:\n");
 
