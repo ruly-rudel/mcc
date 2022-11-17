@@ -345,6 +345,7 @@ new_node_num (int val)
 
 
 void program ();
+Node *block ();
 Node *stmt ();
 Node *expr ();
 Node *assign ();
@@ -367,11 +368,9 @@ program ()
 }
 
 Node *
-stmt ()
+block ()
 {
-  Node *node;
-  if(consume("{"))
-  {
+	  Node *node = NULL;
 	  Node * block_root = NULL;
 	  if(lookat() == NULL || *lookat() != '}')
 	  {
@@ -388,7 +387,16 @@ stmt ()
 		block_root = new_node (ND_BLOCK, NULL, NULL);
 	  }
 	  expect("}");
-	  node = block_root;
+	  return block_root;
+}
+
+Node *
+stmt ()
+{
+  Node *node;
+  if(consume("{"))
+  {
+	  node = block();
   }
   else if (consume_kind (TK_RETURN))
     {
