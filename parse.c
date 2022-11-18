@@ -361,6 +361,7 @@ program ()
           consume (")");
 
           expect("{");
+	  locals = NULL;
           func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
           func[i]->locals = locals;
 	}
@@ -655,7 +656,7 @@ primary ()
 	      lvar->next = locals;
 	      lvar->name = tok->str;
 	      lvar->len = tok->len;
-	      lvar->offset = locals ? locals->offset + 8 : 0;
+	      lvar->offset = locals ? locals->offset + 8 : 8;
 	      node->offset = lvar->offset;
 	      locals = lvar;
 	    }

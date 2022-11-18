@@ -131,14 +131,14 @@ gen (Node * node)
 	      printf ("  push 0\n");	// dummy args
 	    }
 	}
-      printf ("  pop R9\n");
-      printf ("  pop R8\n");
-      printf ("  pop RCX\n");
-      printf ("  pop RDX\n");
-      printf ("  pop RSI\n");
-      printf ("  pop RDI\n");
+      printf ("  pop r9\n");
+      printf ("  pop r8\n");
+      printf ("  pop rcx\n");
+      printf ("  pop rdx\n");
+      printf ("  pop rsi\n");
+      printf ("  pop rdi\n");
       printf ("  call %s\n", node->identity);
-      printf ("  push RAX\n");
+      printf ("  push rax\n");
       return;
     }
 
@@ -233,16 +233,6 @@ parse_and_code_gen (char *src)
       printf ("  sub rsp, %d\n", 8 * count_lvar());
 
       gen (func[i]->ast_root);
-
-      // 式の評価結果としてスタックに一つの値が残っている
-      // はずなので、スタックが溢れないようにポップしておく
-      printf ("  pop rax\n");
-
-      // エピローグ
-      // 最後の式の結果がRAXに残っているのでそれが返り値になる
-      printf ("  mov rsp, rbp\n");
-      printf ("  pop rbp\n");
-      printf ("  ret\n");
     }
 
 }
