@@ -57,6 +57,8 @@ typedef enum
   ND_BLOCK,			// {} block
   ND_CALL,			// function call
   ND_COMMA,			// comma
+  ND_ADDR,			// &(address)
+  ND_DEREF,			// *(dereference)
 } NodeKind;
 
 

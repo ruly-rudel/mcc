@@ -193,6 +193,7 @@ char *tokens[] = {
   "{",
   "}",
   ",",
+  "&",
 };
 
 char *keywords[] = {
@@ -684,6 +685,14 @@ unary ()
   if (consume ("-"))
     {
       return new_node (ND_SUB, new_node_num (0), primary ());
+    }
+  if (consume ("*"))
+    {
+      return new_node (ND_DEREF, unary(), NULL);
+    }
+  if (consume ("&"))
+    {
+      return new_node (ND_ADDR, unary(), NULL);
     }
   return primary ();
 }
