@@ -339,23 +339,44 @@ Node *equality ();
 Node *relational ();
 Node *add ();
 Node *mul ();
+Node *commas ();
 Node *primary ();
 Node *unary ();
 
 void
 program ()
 {
-  int i = 0;
-  func[i] = calloc(1, sizeof(Func));
-  func[i]->locals = NULL;
-  func[i]->ast_root = new_node (ND_BLOCK, stmt(), NULL);
-  Node *node = func[i]->ast_root;
-  while (!at_eof ())
+  int i;
+  for (i = 0; !at_eof (); i++)
     {
-	    node->rhs = new_node(ND_BLOCK, stmt(), NULL);
-	    node = node->rhs;
+      func[i] = calloc(1, sizeof(Func));
+
+      Token *tok = consume_ident ();
+      if (tok)
+        {
+          func[i]->name = calloc (1, tok->len + 1);
+          memcpy (func[i]->name, tok->str, tok->len);
+          func[i]->name[tok->len] = '\0';
+
+          consume ("(");
+	  locals = NULL;
+	  func[i]->args = NULL;
+	  if(!look_at(")"))
+            {
+              func[i]->args = commas();
+	    }
+          consume (")");
+
+          expect("{");
+          func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
+          func[i]->locals = locals;
+	}
+      else
+        {
+          error_at (token->str, "関数名が必要です");
+        }
     }
-  func[++i] = NULL;
+  func[i] = NULL;
 }
 
 Node *
@@ -641,7 +662,7 @@ primary ()
 	      lvar->next = locals;
 	      lvar->name = tok->str;
 	      lvar->len = tok->len;
-	      lvar->offset = locals ? locals->offset + 8 : 0;
+	      lvar->offset = locals ? locals->offset + 8 : 8;
 	      node->offset = lvar->offset;
 	      locals = lvar;
 	    }

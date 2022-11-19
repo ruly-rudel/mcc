@@ -131,14 +131,14 @@ gen (Node * node)
 	      printf ("  push 0\n");	// dummy args
 	    }
 	}
-      printf ("  pop R9\n");
-      printf ("  pop R8\n");
-      printf ("  pop RCX\n");
-      printf ("  pop RDX\n");
-      printf ("  pop RSI\n");
-      printf ("  pop RDI\n");
+      printf ("  pop r9\n");
+      printf ("  pop r8\n");
+      printf ("  pop rcx\n");
+      printf ("  pop rdx\n");
+      printf ("  pop rsi\n");
+      printf ("  pop rdi\n");
       printf ("  call %s\n", node->identity);
-      printf ("  push RAX\n");
+      printf ("  push rax\n");
       return;
     }
 
@@ -223,25 +223,55 @@ parse_and_code_gen (char *src)
   // 先頭の式から順にコード生成
   for (int i = 0; func[i]; i++)
     {
-      printf (".globl main\n");
-      printf ("main:\n");
+      locals = func[i]->locals;
+      printf (".globl %s\n", func[i]->name);
+      printf ("%s:\n", func[i]->name);
 
       // プロローグ
       printf ("  push rbp\n");
       printf ("  mov rbp, rsp\n");
-      printf ("  sub rsp, %d\n", 8 * count_lvar());
+
+      Node *args = func[i]->args;
+      int args_count = 0;
+      while(args)
+        {
+          if(args->lhs->kind != ND_LVAR)
+	    {
+              error("内部エラー: 引数がLVARではありません");
+	    }
+	  switch(args->lhs->offset)
+          {
+            case 8:
+              printf ("  push rdi\n");
+	      break;
+            case 16:
+              printf ("  push rsi\n");
+	      break;
+            case 24:
+              printf ("  push rdx\n");
+	      break;
+            case 32:
+              printf ("  push rcx\n");
+	      break;
+            case 40:
+              printf ("  push r8\n");
+	      break;
+            case 48:
+              printf ("  push r9\n");
+	      break;
+            default:
+              error("内部エラー: LVARのoffsetが異常です");
+	      break;
+	  }
+
+	  args_count++;
+	  args = args->rhs;
+        }
+
+      printf ("  sub rsp, %d\n", 8 * (count_lvar() - args_count));
+
 
       gen (func[i]->ast_root);
-
-      // 式の評価結果としてスタックに一つの値が残っている
-      // はずなので、スタックが溢れないようにポップしておく
-      printf ("  pop rax\n");
-
-      // エピローグ
-      // 最後の式の結果がRAXに残っているのでそれが返り値になる
-      printf ("  mov rsp, rbp\n");
-      printf ("  pop rbp\n");
-      printf ("  ret\n");
     }
 
 }
