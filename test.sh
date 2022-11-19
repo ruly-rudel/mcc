@@ -53,5 +53,6 @@ assert 3  'main(){return bar(1, 2);}'
 assert 3  'main(){a=1; return bar(a, 2);}'
 assert 20 'baz(){ return 20; } main(){ return baz(); }'
 assert 30 'baz(){ a = 10; b = 20; return a + b; } main() { a = 50; return baz();}'
+assert 30 'baz(a, b){ return a + b; } main() { a = 50; return baz(10, 20);}'
 
 echo OK

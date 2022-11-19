@@ -339,6 +339,7 @@ Node *equality ();
 Node *relational ();
 Node *add ();
 Node *mul ();
+Node *commas ();
 Node *primary ();
 Node *unary ();
 
@@ -358,10 +359,15 @@ program ()
           func[i]->name[tok->len] = '\0';
 
           consume ("(");
+	  locals = NULL;
+	  func[i]->args = NULL;
+	  if(!look_at(")"))
+            {
+              func[i]->args = commas();
+	    }
           consume (")");
 
           expect("{");
-	  locals = NULL;
           func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
           func[i]->locals = locals;
 	}

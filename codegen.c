@@ -230,7 +230,46 @@ parse_and_code_gen (char *src)
       // プロローグ
       printf ("  push rbp\n");
       printf ("  mov rbp, rsp\n");
-      printf ("  sub rsp, %d\n", 8 * count_lvar());
+
+      Node *args = func[i]->args;
+      int args_count = 0;
+      while(args)
+        {
+          if(args->lhs->kind != ND_LVAR)
+	    {
+              error("内部エラー: 引数がLVARではありません");
+	    }
+	  switch(args->lhs->offset)
+          {
+            case 8:
+              printf ("  push rdi\n");
+	      break;
+            case 16:
+              printf ("  push rsi\n");
+	      break;
+            case 24:
+              printf ("  push rdx\n");
+	      break;
+            case 32:
+              printf ("  push rcx\n");
+	      break;
+            case 40:
+              printf ("  push r8\n");
+	      break;
+            case 48:
+              printf ("  push r9\n");
+	      break;
+            default:
+              error("内部エラー: LVARのoffsetが異常です");
+	      break;
+	  }
+
+	  args_count++;
+	  args = args->rhs;
+        }
+
+      printf ("  sub rsp, %d\n", 8 * (count_lvar() - args_count));
+
 
       gen (func[i]->ast_root);
     }
