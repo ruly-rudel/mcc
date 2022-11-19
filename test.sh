@@ -56,5 +56,6 @@ assert 30 'baz(){ a = 10; b = 20; return a + b; } main() { a = 50; return baz();
 assert 10 'baz(a, b){ return b - a; } main() { a = 50; return baz(10, 20);}'
 assert 16 'baz(n){ if (n == 0) return 1; else return baz(n - 1) * 2; } main() { return baz(4);}'
 assert 34 'fib(n){ if (n == 1) return 1; else if (n == 2) return 1; else return fib(n - 1) + fib(n - 2); } main() { return fib(9);}'
+assert 3  'main(){ x = 3; y = &x; return *y;}'
 
 echo OK
