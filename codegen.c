@@ -171,6 +171,9 @@ gen (Node * node)
       printf("  mov rax, [rax]\n");
       printf("  push rax\n");
       return;
+    case ND_DEFIDENT:
+      printf("  push 0\n");	// dummy result for pop in block
+      return;
     }
 
   gen (node->lhs);
@@ -240,45 +243,37 @@ parse_and_code_gen (char *src)
       printf ("  push rbp\n");
       printf ("  mov rbp, rsp\n");
 
-      Node *args = func[i]->args;
-      int args_count = 0;
-      while(args)
-        {
-          if(args->lhs->kind != ND_LVAR)
-	    {
-              error("内部エラー: 引数がLVARではありません");
-	    }
-	  switch(args->lhs->offset)
+      int j = 0;
+      while(j < func[i]->argnum)
+      {
+	  switch(j + 1)
           {
-            case 8:
+            case 1:
               printf ("  push rdi\n");
 	      break;
-            case 16:
+            case 2:
               printf ("  push rsi\n");
 	      break;
-            case 24:
+            case 3:
               printf ("  push rdx\n");
 	      break;
-            case 32:
+            case 4:
               printf ("  push rcx\n");
 	      break;
-            case 40:
+            case 5:
               printf ("  push r8\n");
 	      break;
-            case 48:
+            case 6:
               printf ("  push r9\n");
 	      break;
             default:
-              error("内部エラー: LVARのoffsetが異常です");
+              error("内部エラー: argnumが異常です");
 	      break;
 	  }
+	  j++;
+      }
 
-	  args_count++;
-	  args = args->rhs;
-        }
-
-      printf ("  sub rsp, %d\n", 8 * (count_lvar() - args_count));
-
+      printf ("  sub rsp, %d\n", 8 * (count_lvar() - func[i]->argnum));
 
       gen (func[i]->ast_root);
     }
