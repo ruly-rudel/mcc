@@ -201,7 +201,8 @@ char *keywords[] = {
   "if",
   "else",
   "while",
-  "for"
+  "for",
+  "int",
 };
 
 // 入力文字列pをトークナイズしてそれを返す
@@ -341,6 +342,8 @@ Node *relational ();
 Node *add ();
 Node *mul ();
 Node *commas ();
+int argdefs ();
+Token *argdef ();
 Node *primary ();
 Node *unary ();
 
@@ -352,6 +355,7 @@ program ()
     {
       func[i] = calloc(1, sizeof(Func));
 
+      consume("int");
       Token *tok = consume_ident ();
       if (tok)
         {
@@ -361,12 +365,7 @@ program ()
 
           consume ("(");
 	  locals = NULL;
-	  func[i]->args = NULL;
-	  if(!look_at(")"))
-            {
-              func[i]->args = commas();
-	    }
-          consume (")");
+          func[i]->argnum = argdefs();
 
           expect("{");
           func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
@@ -471,6 +470,11 @@ stmt ()
       node =
 	new_node_4 (ND_FOR, initial_node, condition_node, inclemental_node,
 		    body_node);
+    }
+  else if(argdef())
+    {
+      expect (";");
+      node = new_node(ND_DEFIDENT, NULL, NULL);
     }
   else
     {
@@ -613,6 +617,54 @@ commas ()
     }
 }
 
+int
+argdefs ()
+{
+  if(argdef())
+  {
+	  if(consume(","))
+	  {
+		  return argdefs() + 1;
+	  }
+	  else if(consume(")"))
+	  {
+		  return 1;
+	  }
+  }
+  if(consume(")"))
+  {
+	  return 0;
+  }
+
+  return -1;
+}
+
+Token *
+argdef()
+{
+  if(consume("int"))
+    {
+      Token *tok = consume_ident();
+
+      if(tok)
+        {
+          LVar *lvar = calloc (1, sizeof (LVar));
+          lvar->next = locals;
+          lvar->name = tok->str;
+          lvar->len = tok->len;
+          lvar->offset = locals ? locals->offset + 8 : 8;
+          locals = lvar;
+        }
+      else
+        {
+          error_at (tok->str, "識別子が必要です");
+	}
+
+      return tok;
+    }
+  return NULL;
+}
+
 Node *
 primary ()
 {
@@ -659,13 +711,7 @@ primary ()
 	    }
 	  else
 	    {
-	      lvar = calloc (1, sizeof (LVar));
-	      lvar->next = locals;
-	      lvar->name = tok->str;
-	      lvar->len = tok->len;
-	      lvar->offset = locals ? locals->offset + 8 : 8;
-	      node->offset = lvar->offset;
-	      locals = lvar;
+              error_at(tok->str, "宣言されていません。");
 	    }
 	  return node;
 	}

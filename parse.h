@@ -59,6 +59,7 @@ typedef enum
   ND_COMMA,			// comma
   ND_ADDR,			// &(address)
   ND_DEREF,			// *(dereference)
+  ND_DEFIDENT,			// define identity
 } NodeKind;
 
 
@@ -80,7 +81,7 @@ typedef struct Func Func;
 struct Func
 {
   char* name;
-  Node* args;
+  int   argnum;
   Node* ast_root;
   LVar* locals;
 };
