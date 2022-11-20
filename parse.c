@@ -644,6 +644,15 @@ argdef()
 {
   if(consume("int"))
     {
+      Type *type_root = calloc (1, sizeof (Type));
+      type_root->ty = INT;
+      while(consume("*"))
+      {
+	      Type* type = calloc (1, sizeof (Type));
+	      type->ty = PTR;
+	      type->ptr_to = type_root;
+	      type_root = type;
+      }
       Token *tok = consume_ident();
 
       if(tok)
@@ -653,6 +662,7 @@ argdef()
           lvar->name = tok->str;
           lvar->len = tok->len;
           lvar->offset = locals ? locals->offset + 8 : 8;
+	  lvar->type = type_root;
           locals = lvar;
         }
       else

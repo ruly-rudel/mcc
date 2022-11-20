@@ -59,6 +59,7 @@ assert 30 'int baz(){ int a; int b; a = 10; b = 20; return a + b; } int main() {
 assert 10 'int baz(int a, int b){ return b - a; } int main() { int a; a = 50; return baz(10, 20);}'
 assert 16 'int baz(int n){ if (n == 0) return 1; else return baz(n - 1) * 2; } int main() { return baz(4);}'
 assert 34 'int fib(int n){ if (n == 1) return 1; else if (n == 2) return 1; else return fib(n - 1) + fib(n - 2); } int main() { return fib(9);}'
-assert 3  'int main(){int x; int y; x = 3; y = &x; return *y;}'
+assert 3  'int main(){int x; int *y; x = 3; y = &x; return *y;}'
+assert 3  'int main(){int x; int *y; y = &x; *y = 3; return x;}'
 
 echo OK
