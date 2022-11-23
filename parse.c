@@ -72,6 +72,19 @@ find_func (Token * tok)
   return NULL;
 }
 
+Func *
+find_func_name (char* name)
+{
+  for (Func * func = funcs; func; func = func->next)
+    {
+      if (strlen(func->name) == strlen(name) && !memcmp (name, func->name, strlen(name)))
+        {
+          return func;
+        }
+    }
+  return NULL;
+}
+
 bool
 not_token_str (char *op)
 {
@@ -222,6 +235,8 @@ char *tokens[] = {
   "}",
   ",",
   "&",
+  "[",
+  "]",
 };
 
 char *keywords[] = {
@@ -412,10 +427,9 @@ program ()
           func->argnum = argdefs();
 
           expect("{");
+          func->type = type_root;
           func->ast_root = new_node (ND_BLOCK, block(), NULL);
           func->locals = locals;
-
-          func->type = type_root;
         }
       else
         {
@@ -640,8 +654,12 @@ infer_type(Node* node)
       {
         node->type->ty = INT;
       }
-      else if((lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == INT) ||
-              (rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT && lhs_type->ty == INT))
+      else if(
+              (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == INT) ||
+              (rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT && lhs_type->ty == INT) ||
+              (lhs_type->ty == ARRAY && lhs_type->ptr_to->ty == INT && rhs_type->ty == INT) ||
+              (rhs_type->ty == ARRAY && rhs_type->ptr_to->ty == INT && lhs_type->ty == INT)         
+             )
       {
         node->type->ty = PTR;
         node->type->ptr_to = calloc(1, sizeof(Type));
@@ -729,7 +747,7 @@ infer_type(Node* node)
       break;
 
     case ND_DEREF:
-      if(lhs_type->ty == PTR)
+      if(lhs_type->ty == PTR || lhs_type->ty == ARRAY)
       {
         node->type = lhs_type->ptr_to;
       }
@@ -738,12 +756,6 @@ infer_type(Node* node)
         error("ポインタ以外にデリファレンスはできません\n");
       }
       break;
-
-    case ND_CALL:
-      node->type = calloc(1, sizeof(Type));
-      node->type->ty = INT;
-      break;
-
 
     default:
       break;    
@@ -820,6 +832,13 @@ argdefs ()
   return -1;
 }
 
+
+int
+type_size(Type* t)
+{
+
+}
+
 Token *
 argdef()
 {
@@ -838,11 +857,44 @@ argdef()
 
       if(tok)
         {
+          if(consume("["))
+          {
+            int array_size = expect_number();
+            expect("]");
+
+            Type *type = calloc(1, sizeof(Type));
+            type->ty = ARRAY;
+            type->ptr_to = type_root;
+            type->array_size = array_size;
+            type_root = type;
+          }
+
           LVar *lvar = calloc (1, sizeof (LVar));
           lvar->next = locals;
           lvar->name = tok->str;
           lvar->len = tok->len;
-          lvar->offset = locals ? locals->offset + 8 : 8;
+          if(locals)
+          {
+            if(locals->type->ty == ARRAY)
+            {
+              if(locals->type->ptr_to->ty == INT)
+              {
+                lvar->offset = locals->offset + 4 * locals->type->array_size;
+              }
+              else
+              {
+                lvar->offset = locals->offset + 8 * locals->type->array_size;
+              }
+            }
+            else
+            {
+              lvar->offset = locals->offset + 8;
+            }
+          }
+          else
+          {
+            lvar->offset = 8;
+          }
           lvar->type = type_root;
           locals = lvar;
         }

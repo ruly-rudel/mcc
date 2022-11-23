@@ -48,7 +48,7 @@ gen (Node * node)
   if (node->kind == ND_RETURN)
     {
       gen (node->lhs);
-      printf ("  pop rax\n");
+      printf ("  pop rax\t\t\t# ND_RETURN\n");
       printf ("  mov rsp, rbp\n");
       printf ("  pop rbp\n");
       printf ("  ret\n");
@@ -151,19 +151,22 @@ gen (Node * node)
   switch (node->kind)
     {
     case ND_NUM:
-      printf ("  push %d\n", node->val);
+      printf ("  push %d\t\t\t# ND_NUM\n", node->val);
       return;
     case ND_LVAR:
       gen_lval (node);
-      printf ("  pop rax\n");
-      printf ("  mov rax, [rax]\n");
-      printf ("  push rax\n");
+      if(node->type->ty != ARRAY)
+      {
+        printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
+        printf ("  mov rax, [rax]\n");
+        printf ("  push rax\n");
+      }
       return;
     case ND_ASSIGN:
       gen_lval (node->lhs);
       gen (node->rhs);
 
-      printf ("  pop rdi\n");
+      printf ("  pop rdi\t\t\t# ND_ASSIGN\n");
       printf ("  pop rax\n");
       printf ("  mov [rax], rdi\n");
       printf ("  push rdi\n");
@@ -173,7 +176,7 @@ gen (Node * node)
       return;
     case ND_DEREF:
       gen(node->lhs);
-      printf("  pop rax\n");
+      printf("  pop rax\t\t\t# ND_DEREF\n");
       printf("  mov rax, [rax]\n");
       printf("  push rax\n");
       return;
