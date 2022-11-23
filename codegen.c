@@ -304,18 +304,18 @@ parse_and_code_gen (char *src)
   printf (".intel_syntax noprefix\n");
 
   // 先頭の式から順にコード生成
-  for (int i = 0; func[i]; i++)
+  for (Func* func = funcs; func; func = func->next)
     {
-      locals = func[i]->locals;
-      printf (".globl %s\n", func[i]->name);
-      printf ("%s:\n", func[i]->name);
+      locals = func->locals;
+      printf (".globl %s\n", func->name);
+      printf ("%s:\n", func->name);
 
       // プロローグ
       printf ("  push rbp\n");
       printf ("  mov rbp, rsp\n");
 
       int j = 0;
-      while(j < func[i]->argnum)
+      while(j < func->argnum)
       {
 	  switch(j + 1)
           {
@@ -344,9 +344,9 @@ parse_and_code_gen (char *src)
 	  j++;
       }
 
-      printf ("  sub rsp, %d\n", 8 * (count_lvar() - func[i]->argnum));
+      printf ("  sub rsp, %d\n", 8 * (count_lvar() - func->argnum));
 
-      gen (func[i]->ast_root);
+      gen (func->ast_root);
     }
 
 }

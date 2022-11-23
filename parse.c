@@ -7,7 +7,7 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
-Func *func[100];
+Func *funcs = NULL;
 
 // ローカル変数
 LVar *locals = NULL;
@@ -30,6 +30,21 @@ error_at (char *loc, char *fmt, ...)
   exit (1);
 }
 
+void
+warn_at (char *loc, char *fmt, ...)
+{
+  va_list ap;
+  va_start (ap, fmt);
+
+  int pos = loc - user_input;
+  fprintf (stderr, "%s\n", user_input);
+  fprintf (stderr, "%*s", pos, " ");	// pos個の空白を出力
+  fprintf (stderr, "^ ");
+  vfprintf (stderr, fmt, ap);
+  fprintf (stderr, "\n");
+}
+
+
 // 変数を名前で検索する。見つからなかった場合はNULLを返す。
 LVar *
 find_lvar (Token * tok)
@@ -40,6 +55,19 @@ find_lvar (Token * tok)
 	{
 	  return var;
 	}
+    }
+  return NULL;
+}
+
+Func *
+find_func (Token * tok)
+{
+  for (Func * func = funcs; func; func = func->next)
+    {
+      if (strlen(func->name) == tok->len && !memcmp (tok->str, func->name, tok->len))
+        {
+          return func;
+        }
     }
   return NULL;
 }
@@ -357,33 +385,43 @@ program ()
   int i;
   for (i = 0; !at_eof (); i++)
     {
-      func[i] = calloc(1, sizeof(Func));
+      Func* func = calloc(1, sizeof(Func));
 
       consume("int");
+      Type *type_root = calloc (1, sizeof (Type));
+      type_root->ty = INT;
+      while(consume("*"))
+      {
+	      Type* type = calloc (1, sizeof (Type));
+	      type->ty = PTR;
+	      type->ptr_to = type_root;
+	      type_root = type;
+      }
       Token *tok = consume_ident ();
       if (tok)
         {
-          func[i]->name = calloc (1, tok->len + 1);
-          memcpy (func[i]->name, tok->str, tok->len);
-          func[i]->name[tok->len] = '\0';
+          func->name = calloc (1, tok->len + 1);
+          memcpy (func->name, tok->str, tok->len);
+          func->name[tok->len] = '\0';
+
+          func->next = funcs;
+          funcs = func;
 
           consume ("(");
           locals = NULL;
-          func[i]->argnum = argdefs();
+          func->argnum = argdefs();
 
           expect("{");
-          func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
-          func[i]->locals = locals;
+          func->ast_root = new_node (ND_BLOCK, block(), NULL);
+          func->locals = locals;
 
-          func[i]->ast_root->type = calloc(1, sizeof(Type));
-          func[i]->ast_root->type->ty = INT;
-	}
+          func->type = type_root;
+        }
       else
         {
           error_at (token->str, "関数名が必要です");
         }
     }
-  func[i] = NULL;
 }
 
 Node *
@@ -838,6 +876,17 @@ primary ()
 	  consume ("(");
 	  Node *node = calloc (1, sizeof (Node));
 	  node->kind = ND_CALL;
+    Func* func = find_func(tok);
+    if(func)
+    {
+      node->type = func->type;
+    }
+    else
+    {
+      warn_at(tok->str, "宣言されていない関数です。");
+      node->type = calloc(1, sizeof(Type));
+      node->type->ty = INT;
+    }
 	  if (look_at (")"))
 	    {
 	      node->lhs = NULL;
@@ -845,7 +894,7 @@ primary ()
 	  else
 	    {
 	      node->lhs = commas ();
-	    }
+      }
 	  node->identity = calloc (1, tok->len + 1);
 	  memcpy (node->identity, tok->str, tok->len);
 	  node->identity[tok->len] = '\0';

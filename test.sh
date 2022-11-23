@@ -81,5 +81,6 @@ assert 4  'int main() { int x; int *y; return sizeof(x + 3); }'
 assert 8  'int main() { int x; int *y; return sizeof(y + 3); }'
 assert 4  'int main() { int x; int *y; return sizeof(3); }'
 assert 4  'int main() { int x; int *y; return sizeof(sizeof(y)); }'
+assert 4  'int *baz(int* n){ return n + 2; } int main() { int *p; alloc4(&p, 1, 2, 4, 8); return *baz(p);}'
 
 echo OK
