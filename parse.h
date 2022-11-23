@@ -92,7 +92,9 @@ struct Node
 typedef struct Func Func;
 struct Func
 {
+  Func* next;
   char* name;
+  Type *type;
   int   argnum;
   Node* ast_root;
   LVar* locals;
@@ -105,7 +107,7 @@ extern char *user_input;
 // 現在着目しているトークン
 extern Token *token;
 
-extern Func *func[100];
+extern Func *funcs;
 
 // ローカル変数
 extern LVar *locals;

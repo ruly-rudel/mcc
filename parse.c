@@ -7,7 +7,7 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
-Func *func[100];
+Func *funcs = NULL;
 
 // ローカル変数
 LVar *locals = NULL;
@@ -357,33 +357,35 @@ program ()
   int i;
   for (i = 0; !at_eof (); i++)
     {
-      func[i] = calloc(1, sizeof(Func));
+      Func* func = calloc(1, sizeof(Func));
 
       consume("int");
       Token *tok = consume_ident ();
       if (tok)
         {
-          func[i]->name = calloc (1, tok->len + 1);
-          memcpy (func[i]->name, tok->str, tok->len);
-          func[i]->name[tok->len] = '\0';
+          func->name = calloc (1, tok->len + 1);
+          memcpy (func->name, tok->str, tok->len);
+          func->name[tok->len] = '\0';
 
           consume ("(");
           locals = NULL;
-          func[i]->argnum = argdefs();
+          func->argnum = argdefs();
 
           expect("{");
-          func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
-          func[i]->locals = locals;
+          func->ast_root = new_node (ND_BLOCK, block(), NULL);
+          func->locals = locals;
 
-          func[i]->ast_root->type = calloc(1, sizeof(Type));
-          func[i]->ast_root->type->ty = INT;
-	}
+          func->type = calloc(1, sizeof(Type));
+          func->type->ty = INT;
+          func->next = funcs;
+
+          funcs = func;
+        }
       else
         {
           error_at (token->str, "関数名が必要です");
         }
     }
-  func[i] = NULL;
 }
 
 Node *
