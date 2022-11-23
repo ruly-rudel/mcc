@@ -203,6 +203,7 @@ char *keywords[] = {
   "while",
   "for",
   "int",
+  "sizeof",
 };
 
 // 入力文字列pをトークナイズしてそれを返す
@@ -900,5 +901,22 @@ unary ()
       infer_type(node);
       return node;
     }
+  if (consume ("sizeof"))
+  {
+    node = unary();
+    infer_type(node);
+    if(node->type->ty == INT)
+    {
+      return new_node_num(4);
+    }
+    else if(node->type->ty == PTR)
+    {
+      return new_node_num(8);
+    }
+    else
+    {
+      error_at(token->str, "sizeofで判別できませんでした。");
+    }
+  }
   return primary ();
 }

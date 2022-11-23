@@ -73,5 +73,13 @@ assert 2  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return 
 assert 3  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return q - p;}'
 assert 1  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 1; return q - p; }'
 assert 2  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 2; return q - p; }'
+assert 4  'int main() { int x; int *y; return sizeof(x); }'
+assert 8  'int main() { int x; int *y; return sizeof(y); }'
+assert 8  'int main() { int x; int *y; return sizeof(&x); }'
+assert 4  'int main() { int x; int *y; return sizeof(*y); }'
+assert 4  'int main() { int x; int *y; return sizeof(x + 3); }'
+assert 8  'int main() { int x; int *y; return sizeof(y + 3); }'
+assert 4  'int main() { int x; int *y; return sizeof(3); }'
+assert 4  'int main() { int x; int *y; return sizeof(sizeof(y)); }'
 
 echo OK
