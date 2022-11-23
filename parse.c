@@ -328,6 +328,8 @@ new_node_num (int val)
   Node *node = calloc (1, sizeof (Node));
   node->kind = ND_NUM;
   node->val = val;
+  node->type = calloc(1, sizeof(Type));
+  node->type->ty = INT;
   return node;
 }
 
@@ -340,6 +342,7 @@ Node *assign ();
 Node *equality ();
 Node *relational ();
 Node *add ();
+Type *infer_type(Node* node);
 Node *mul ();
 Node *commas ();
 int argdefs ();
@@ -364,12 +367,15 @@ program ()
           func[i]->name[tok->len] = '\0';
 
           consume ("(");
-	  locals = NULL;
+          locals = NULL;
           func[i]->argnum = argdefs();
 
           expect("{");
           func[i]->ast_root = new_node (ND_BLOCK, block(), NULL);
           func[i]->locals = locals;
+
+          func[i]->ast_root->type = calloc(1, sizeof(Type));
+          func[i]->ast_root->type->ty = INT;
 	}
       else
         {
@@ -557,16 +563,19 @@ Node *
 add ()
 {
   Node *node = mul ();
+  infer_type(node);
 
   for (;;)
     {
       if (consume ("+"))
 	{
 	  node = new_node (ND_ADD, node, mul ());
+    infer_type(node);
 	}
       else if (consume ("-"))
 	{
 	  node = new_node (ND_SUB, node, mul ());
+    infer_type(node);
 	}
       else
 	{
@@ -575,20 +584,153 @@ add ()
     }
 }
 
+Type *
+infer_type(Node* node)
+{
+  bool  has_lhs  = node->lhs != NULL;
+  bool  has_rhs  = node->rhs != NULL;
+
+  Type* lhs_type = has_lhs ? node->lhs->type : NULL;
+  Type* rhs_type = has_rhs ? node->rhs->type : NULL;
+
+  switch(node->kind)
+  {
+    case ND_ADD:
+      node->type = calloc(1, sizeof(Type));
+      if(lhs_type->ty == INT && rhs_type->ty == INT)
+      {
+        node->type->ty = INT;
+      }
+      else if((lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == INT) ||
+              (rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT && lhs_type->ty == INT))
+      {
+        node->type->ty = PTR;
+        node->type->ptr_to = calloc(1, sizeof(Type));
+        node->type->ptr_to->ty = INT;
+        node->type->ptr_to->ptr_to = NULL;
+      } 
+      else if((lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR && rhs_type->ty == INT) ||
+              (rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR && lhs_type->ty == INT))
+      {
+        node->type->ty = PTR;
+        node->type->ptr_to = calloc(1, sizeof(Type));
+        node->type->ptr_to->ty = PTR;
+        node->type->ptr_to->ptr_to = NULL;
+      } 
+      else
+      {
+        error("加算の型が合いません\n");
+      }
+      break;
+
+    case ND_SUB:
+      node->type = calloc(1, sizeof(Type));
+      if((lhs_type->ty == INT && rhs_type->ty == INT) || 
+         (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == PTR && rhs_type->ptr_to->ty ==INT) ||
+         (lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR && rhs_type->ty == PTR && rhs_type->ptr_to->ty ==PTR))
+      {
+        node->type->ty = INT;
+      }
+      else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == INT)      
+      {
+        node->type->ty = PTR;
+        node->type->ptr_to = calloc(1, sizeof(Type));
+        node->type->ptr_to->ty = INT;
+        node->type->ptr_to->ptr_to = NULL;
+      } 
+      else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR && rhs_type->ty == INT)
+      {
+        node->type->ty = PTR;
+        node->type->ptr_to = calloc(1, sizeof(Type));
+        node->type->ptr_to->ty = PTR;
+        node->type->ptr_to->ptr_to = NULL;
+      } 
+      else
+      {
+        error("減算の型が合いません\n");
+      }
+      break;
+
+    case ND_MUL:
+      node->type = calloc(1, sizeof(Type));
+      if(lhs_type->ty == INT && rhs_type->ty == INT)
+      {
+        node->type->ty = INT;
+      }      
+      else
+      {
+        error("乗算の型が合いません\n");
+      }
+      break;
+
+    case ND_DIV:
+      node->type = calloc(1, sizeof(Type));
+      if(lhs_type->ty == INT && rhs_type->ty == INT)
+      {
+        node->type->ty = INT;
+      }      
+      else
+      {
+        error("除算の型が合いません\n");
+      }
+      break;
+
+    case ND_NUM:
+      node->type = calloc(1, sizeof(Type));
+      node->type->ty = INT;
+      break;
+
+    case ND_LVAR:
+      break;
+
+    case ND_ADDR:
+      node->type = calloc(1, sizeof(Type));
+      node->type->ty = PTR;
+      node->type->ptr_to = lhs_type;
+      break;
+
+    case ND_DEREF:
+      if(lhs_type->ty == PTR)
+      {
+        node->type = lhs_type->ptr_to;
+      }
+      else
+      {
+        error("ポインタ以外にデリファレンスはできません\n");
+      }
+      break;
+
+    case ND_CALL:
+      node->type = calloc(1, sizeof(Type));
+      node->type->ty = INT;
+      break;
+
+
+    default:
+      break;    
+
+  }
+
+  return node->type;
+}
+
 Node *
 mul ()
 {
   Node *node = unary ();
+  infer_type(node);
 
   for (;;)
     {
       if (consume ("*"))
 	{
 	  node = new_node (ND_MUL, node, primary ());
+    infer_type(node);
 	}
       else if (consume ("/"))
 	{
 	  node = new_node (ND_DIV, node, primary ());
+    infer_type(node);
 	}
       else
 	{
@@ -662,13 +804,13 @@ argdef()
           lvar->name = tok->str;
           lvar->len = tok->len;
           lvar->offset = locals ? locals->offset + 8 : 8;
-	  lvar->type = type_root;
+          lvar->type = type_root;
           locals = lvar;
         }
       else
         {
           error_at (tok->str, "識別子が必要です");
-	}
+        }
 
       return tok;
     }
@@ -718,6 +860,7 @@ primary ()
 	  if (lvar)
 	    {
 	      node->offset = lvar->offset;
+	      node->type   = lvar->type;
 	    }
 	  else
 	    {
@@ -734,21 +877,28 @@ primary ()
 Node *
 unary ()
 {
+  Node *node;
   if (consume ("+"))
     {
       return primary ();
     }
   if (consume ("-"))
     {
-      return new_node (ND_SUB, new_node_num (0), primary ());
+      node = new_node (ND_SUB, new_node_num (0), primary ());
+      infer_type(node);
+      return node;
     }
   if (consume ("*"))
     {
-      return new_node (ND_DEREF, unary(), NULL);
+      node = new_node (ND_DEREF, unary(), NULL);
+      infer_type(node);
+      return node;
     }
   if (consume ("&"))
     {
-      return new_node (ND_ADDR, unary(), NULL);
+      node = new_node (ND_ADDR, unary(), NULL);
+      infer_type(node);
+      return node;
     }
   return primary ();
 }

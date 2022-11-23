@@ -61,5 +61,17 @@ assert 16 'int baz(int n){ if (n == 0) return 1; else return baz(n - 1) * 2; } i
 assert 34 'int fib(int n){ if (n == 1) return 1; else if (n == 2) return 1; else return fib(n - 1) + fib(n - 2); } int main() { return fib(9);}'
 assert 3  'int main(){int x; int *y; x = 3; y = &x; return *y;}'
 assert 3  'int main(){int x; int *y; y = &x; *y = 3; return x;}'
+assert 4  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return *q;}'
+assert 8  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q;}'
+assert 4  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 1; return **q; }'
+assert 2  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 2; return **q; }'
+assert 2  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; q = q - 1; return *q;}'
+assert 4  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; q = q - 1; return *q;}'
+assert 8  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 1; q = q - 1; return **q; }'
+assert 4  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 2; q = q - 1; return **q; }'
+assert 2  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return q - p;}'
+assert 3  'int main(){int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return q - p;}'
+assert 1  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 1; return q - p; }'
+assert 2  'int main() { int **p; int a; int b; int c; int d; a = 1; b = 2; c = 4; d = 8; palloc4(&p, &d, &c, &b, &a); int **q; q = p + 2; return q - p; }'
 
 echo OK
