@@ -24,12 +24,13 @@ gen_label_id ()
   return gen_label_var++;
 }
 
+void gen (Node * node);
+
 void
 gen_lval (Node * node)
 {
   if (node->kind != ND_LVAR)
     {
-//    error ("代入の左辺値が変数ではありません");
       gen(node->lhs);
     }
   else
@@ -187,13 +188,78 @@ gen (Node * node)
   printf ("  pop rdi\n");
   printf ("  pop rax\n");
 
+  bool  has_lhs  = node->lhs != NULL;
+  bool  has_rhs  = node->rhs != NULL;
+
+  Type* lhs_type = has_lhs ? node->lhs->type : NULL;
+  Type* rhs_type = has_rhs ? node->rhs->type : NULL;
+
   switch (node->kind)
     {
     case ND_ADD:
-      printf ("  add rax, rdi\n");
+      if(node->type->ty == INT)
+      {
+        printf ("  add rax, rdi\n");
+      }
+      else if(node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      {
+        if(lhs_type->ty == INT)
+        {
+          printf ("  lea rax, [rdi + rax * 4]\n");
+        }
+        else
+        {
+          printf ("  lea rax, [rax + rdi * 4]\n");
+        }
+      }
+      else if(node->type->ty == PTR && node->type->ptr_to->ty == PTR)
+      {
+        if(lhs_type->ty == INT)
+        {
+          printf ("  lea rax, [rdi + rax * 8]\n");
+        }
+        else
+        {
+          printf ("  lea rax, [rax + rdi * 8]\n");
+        }
+      }
+      else
+      {
+        error("加算できない型です");
+      }
       break;
     case ND_SUB:
-      printf ("  sub rax, rdi\n");
+      if(node->type->ty == INT)
+      {
+        if(lhs_type->ty == INT && rhs_type->ty == INT)
+        {
+          printf ("  sub rax, rdi\n");
+        }
+        else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
+        {
+          printf ("  sub rax, rdi\n");
+          printf ("  sar rax, 2\n");
+        }
+        else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR && rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR)
+        {
+          printf ("  sub rax, rdi\n");
+          printf ("  sar rax, 3\n");
+        }
+      }
+      else if(node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      {
+        printf ("  shl rdi, 2\n");
+        printf ("  sub rax, rdi\n");
+      }
+      else if(node->type->ty == PTR && node->type->ptr_to->ty == PTR)
+      {
+        printf ("  shl rdi, 3\n");
+        printf ("  sub rax, rdi\n");
+      }
+      else
+      {
+        error("減算できない型です。");
+      }
       break;
     case ND_MUL:
       printf ("  imul rax, rdi\n");

@@ -85,6 +85,7 @@ struct Node
   Node *body;			// for D in for(A; B; C) D
   int val;			// kindがND_NUMの場合のみ使う
   int offset;			// kindがND_LVARの場合のみ使う
+  Type *type;			// 型の種類 kindがND_LVARの場合のみ使う
   char *identity;		// kindがND_CALLの場合のみ使う
 };
 
