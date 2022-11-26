@@ -84,7 +84,8 @@ assert 4  'int main() { int x; int *y; return sizeof(3); }'
 assert 4  'int main() { int x; int *y; return sizeof(sizeof(y)); }'
 assert 4  'int *baz(int* n){ return n + 2; } int main() { int *p; alloc4(&p, 1, 2, 4, 8); return *baz(p);}'
 assert 1  'int main() { int a[2]; *a = 1; return *a; }'
-assert 2  'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
+assert 2  'int main() { int a[2]; *(a + 1) = 2; *a = 1; return *(a + 1); }'
+assert 1  'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *a; }'
 assert 3  'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }'
 
 echo OK
