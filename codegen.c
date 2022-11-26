@@ -155,7 +155,15 @@ gen (Node * node)
       if (node->type->ty != ARRAY)
         {
           printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
-          printf ("  mov rax, [rax]\n");
+          if(node->type->ty == INT)
+          {
+            printf ("  mov eax, [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else
+          {
+            printf ("  mov rax, [rax]\n");
+          }
           printf ("  push rax\n");
         }
       return;
@@ -165,7 +173,14 @@ gen (Node * node)
 
       printf ("  pop rdi\t\t\t# ND_ASSIGN\n");
       printf ("  pop rax\n");
-      printf ("  mov [rax], rdi\n");
+      if(lhs_type->ty == INT)
+      {
+        printf ("  mov [rax], edi\n");
+      }
+      else
+      {
+        printf ("  mov [rax], rdi\n");
+      }
       printf ("  push rdi\n");
       return;
     case ND_ADDR:
