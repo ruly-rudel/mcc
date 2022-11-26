@@ -26,9 +26,12 @@ struct Token
 typedef struct Type Type;
 
 // 変数の型の種類
-struct Type {
-  enum { INT, PTR } ty;
+struct Type
+{
+  enum
+  { INT, PTR, ARRAY } ty;
   struct Type *ptr_to;
+  size_t array_size;
 };
 
 
@@ -92,12 +95,12 @@ struct Node
 typedef struct Func Func;
 struct Func
 {
-  Func* next;
-  char* name;
+  Func *next;
+  char *name;
   Type *type;
-  int   argnum;
-  Node* ast_root;
-  LVar* locals;
+  int argnum;
+  Node *ast_root;
+  LVar *locals;
 };
 
 

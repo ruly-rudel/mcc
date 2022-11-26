@@ -31,7 +31,7 @@ gen_lval (Node * node)
 {
   if (node->kind != ND_LVAR)
     {
-      gen(node->lhs);
+      gen (node->lhs);
     }
   else
     {
@@ -45,19 +45,28 @@ gen_lval (Node * node)
 void
 gen (Node * node)
 {
-  if (node->kind == ND_RETURN)
+  bool has_lhs = node->lhs != NULL;
+  bool has_rhs = node->rhs != NULL;
+
+  Type *lhs_type = has_lhs ? node->lhs->type : NULL;
+  Type *rhs_type = has_rhs ? node->rhs->type : NULL;
+
+  int id;
+  int arg_num;
+  Node *comma;
+
+  switch (node->kind)
     {
+    case ND_RETURN:
       gen (node->lhs);
-      printf ("  pop rax\n");
+      printf ("  pop rax\t\t\t# ND_RETURN\n");
       printf ("  mov rsp, rbp\n");
       printf ("  pop rbp\n");
       printf ("  ret\n");
       return;
-    }
 
-  if (node->kind == ND_IF)
-    {
-      int id = gen_label_id ();
+    case ND_IF:
+      id = gen_label_id ();
       gen (node->lhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
@@ -66,16 +75,14 @@ gen (Node * node)
       printf ("  jmp .Lend%06d\n", id);
       printf (".Lelse%06d:\n", id);
       if (node->els != NULL)
-	{
-	  gen (node->els);
-	}
+        {
+          gen (node->els);
+        }
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_WHILE)
-    {
-      int id = gen_label_id ();
+    case ND_WHILE:
+      id = gen_label_id ();
       printf (".Lbegin%06d:\n", id);
       gen (node->lhs);
       printf ("  pop rax\n");
@@ -85,58 +92,51 @@ gen (Node * node)
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_FOR)
-    {
-      int id = gen_label_id ();
+    case ND_FOR:
+      id = gen_label_id ();
       if (node->lhs)
-	gen (node->lhs);
+        gen (node->lhs);
       printf (".Lbegin%06d:\n", id);
       if (node->rhs)
-	gen (node->rhs);
+        gen (node->rhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
       printf ("  je .Lend%06d\n", id);
       if (node->body)
-	gen (node->body);
+        gen (node->body);
       if (node->els)
-	gen (node->els);
+        gen (node->els);
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_BLOCK)
-    {
+    case ND_BLOCK:
       if (node->lhs)
-	gen (node->lhs);
+        gen (node->lhs);
       while (node->rhs)
-	{
-	  node = node->rhs;
-	  printf ("  pop rax\n");
-	  gen (node->lhs);
-	}
+        {
+          node = node->rhs;
+          printf ("  pop rax\n");
+          gen (node->lhs);
+        }
       return;
-    }
 
-  if (node->kind == ND_CALL)
-    {
+    case ND_CALL:
       // prepare arguments
-      Node *comma = node->lhs;
-      int arg_num;
+      comma = node->lhs;
       for (arg_num = 0; arg_num < 6; arg_num++)
-	{
-	  if (comma && comma->lhs)
-	    {
-	      gen (comma->lhs);
-	      comma = comma->rhs;
-	    }
-	  else
-	    {
-	      printf ("  push 0\n");	// dummy args
-	    }
-	}
+        {
+          if (comma && comma->lhs)
+            {
+              gen (comma->lhs);
+              comma = comma->rhs;
+            }
+          else
+            {
+              printf ("  push 0\n");	// dummy args
+            }
+        }
       printf ("  pop r9\n");
       printf ("  pop r8\n");
       printf ("  pop rcx\n");
@@ -146,39 +146,54 @@ gen (Node * node)
       printf ("  call %s\n", node->identity);
       printf ("  push rax\n");
       return;
-    }
 
-  switch (node->kind)
-    {
     case ND_NUM:
-      printf ("  push %d\n", node->val);
+      printf ("  push %d\t\t\t# ND_NUM\n", node->val);
       return;
     case ND_LVAR:
       gen_lval (node);
-      printf ("  pop rax\n");
-      printf ("  mov rax, [rax]\n");
-      printf ("  push rax\n");
+      if (node->type->ty != ARRAY)
+        {
+          printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
+          if(node->type->ty == INT)
+          {
+            printf ("  mov eax, [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else
+          {
+            printf ("  mov rax, [rax]\n");
+          }
+          printf ("  push rax\n");
+        }
       return;
     case ND_ASSIGN:
       gen_lval (node->lhs);
       gen (node->rhs);
 
-      printf ("  pop rdi\n");
+      printf ("  pop rdi\t\t\t# ND_ASSIGN\n");
       printf ("  pop rax\n");
-      printf ("  mov [rax], rdi\n");
+      if(lhs_type->ty == INT)
+      {
+        printf ("  mov [rax], edi\n");
+      }
+      else
+      {
+        printf ("  mov [rax], rdi\n");
+      }
       printf ("  push rdi\n");
       return;
     case ND_ADDR:
-      gen_lval(node->lhs);
+      gen_lval (node->lhs);
       return;
     case ND_DEREF:
-      gen(node->lhs);
-      printf("  pop rax\n");
-      printf("  mov rax, [rax]\n");
-      printf("  push rax\n");
+      gen (node->lhs);
+      printf ("  pop rax\t\t\t# ND_DEREF\n");
+      printf ("  mov rax, [rax]\n");
+      printf ("  push rax\n");
       return;
     case ND_DEFIDENT:
-      printf("  push 0\n");	// dummy result for pop in block
+      printf ("  push 0\n");	// dummy result for pop in block
       return;
     }
 
@@ -188,78 +203,76 @@ gen (Node * node)
   printf ("  pop rdi\n");
   printf ("  pop rax\n");
 
-  bool  has_lhs  = node->lhs != NULL;
-  bool  has_rhs  = node->rhs != NULL;
 
-  Type* lhs_type = has_lhs ? node->lhs->type : NULL;
-  Type* rhs_type = has_rhs ? node->rhs->type : NULL;
 
   switch (node->kind)
     {
     case ND_ADD:
-      if(node->type->ty == INT)
-      {
-        printf ("  add rax, rdi\n");
-      }
-      else if(node->type->ty == PTR && node->type->ptr_to->ty == INT)
-      {
-        if(lhs_type->ty == INT)
+      if (node->type->ty == INT)
         {
-          printf ("  lea rax, [rdi + rax * 4]\n");
+          printf ("  add rax, rdi\n");
         }
-        else
+      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
         {
-          printf ("  lea rax, [rax + rdi * 4]\n");
+          if (lhs_type->ty == INT)
+            {
+              printf ("  lea rax, [rdi + rax * 4]\n");
+            }
+          else
+            {
+              printf ("  lea rax, [rax + rdi * 4]\n");
+            }
         }
-      }
-      else if(node->type->ty == PTR && node->type->ptr_to->ty == PTR)
-      {
-        if(lhs_type->ty == INT)
+      else if (node->type->ty == PTR && node->type->ptr_to->ty == PTR)
         {
-          printf ("  lea rax, [rdi + rax * 8]\n");
+          if (lhs_type->ty == INT)
+            {
+              printf ("  lea rax, [rdi + rax * 8]\n");
+            }
+          else
+            {
+              printf ("  lea rax, [rax + rdi * 8]\n");
+            }
         }
-        else
-        {
-          printf ("  lea rax, [rax + rdi * 8]\n");
-        }
-      }
       else
-      {
-        error("加算できない型です");
-      }
+        {
+          error ("加算できない型です");
+        }
       break;
     case ND_SUB:
-      if(node->type->ty == INT)
-      {
-        if(lhs_type->ty == INT && rhs_type->ty == INT)
+      if (node->type->ty == INT)
         {
+          if (lhs_type->ty == INT && rhs_type->ty == INT)
+            {
+              printf ("  sub rax, rdi\n");
+            }
+          else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
+        	   && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
+            {
+              printf ("  sub rax, rdi\n");
+              printf ("  sar rax, 2\n");
+            }
+          else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR
+        	   && rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR)
+            {
+              printf ("  sub rax, rdi\n");
+              printf ("  sar rax, 3\n");
+            }
+        }
+      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
+        {
+          printf ("  shl rdi, 2\n");
           printf ("  sub rax, rdi\n");
         }
-        else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
+      else if (node->type->ty == PTR && node->type->ptr_to->ty == PTR)
         {
+          printf ("  shl rdi, 3\n");
           printf ("  sub rax, rdi\n");
-          printf ("  sar rax, 2\n");
         }
-        else if(lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR && rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR)
-        {
-          printf ("  sub rax, rdi\n");
-          printf ("  sar rax, 3\n");
-        }
-      }
-      else if(node->type->ty == PTR && node->type->ptr_to->ty == INT)
-      {
-        printf ("  shl rdi, 2\n");
-        printf ("  sub rax, rdi\n");
-      }
-      else if(node->type->ty == PTR && node->type->ptr_to->ty == PTR)
-      {
-        printf ("  shl rdi, 3\n");
-        printf ("  sub rax, rdi\n");
-      }
       else
-      {
-        error("減算できない型です。");
-      }
+        {
+          error ("減算できない型です。");
+        }
       break;
     case ND_MUL:
       printf ("  imul rax, rdi\n");
@@ -304,7 +317,7 @@ parse_and_code_gen (char *src)
   printf (".intel_syntax noprefix\n");
 
   // 先頭の式から順にコード生成
-  for (Func* func = funcs; func; func = func->next)
+  for (Func * func = funcs; func; func = func->next)
     {
       locals = func->locals;
       printf (".globl %s\n", func->name);
@@ -315,36 +328,36 @@ parse_and_code_gen (char *src)
       printf ("  mov rbp, rsp\n");
 
       int j = 0;
-      while(j < func->argnum)
-      {
-	  switch(j + 1)
-          {
+      while (j < func->argnum)
+        {
+          switch (j + 1)
+            {
             case 1:
               printf ("  push rdi\n");
-	      break;
+              break;
             case 2:
               printf ("  push rsi\n");
-	      break;
+              break;
             case 3:
               printf ("  push rdx\n");
-	      break;
+              break;
             case 4:
               printf ("  push rcx\n");
-	      break;
+              break;
             case 5:
               printf ("  push r8\n");
-	      break;
+              break;
             case 6:
               printf ("  push r9\n");
-	      break;
+              break;
             default:
-              error("内部エラー: argnumが異常です");
-	      break;
-	  }
-	  j++;
-      }
+              error ("内部エラー: argnumが異常です");
+              break;
+            }
+          j++;
+        }
 
-      printf ("  sub rsp, %d\n", 8 * (count_lvar() - func->argnum));
+      printf ("  sub rsp, %d\n", 8 * (count_lvar () - func->argnum));
 
       gen (func->ast_root);
     }
