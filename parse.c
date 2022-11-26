@@ -393,6 +393,7 @@ Node *mul ();
 Node *commas ();
 int argdefs ();
 Token *argdef ();
+Node *array ();
 Node *primary ();
 Node *unary ();
 
@@ -787,12 +788,12 @@ mul ()
     {
       if (consume ("*"))
         {
-          node = new_node (ND_MUL, node, primary ());
+          node = new_node (ND_MUL, node, array ());
           infer_type (node);
         }
       else if (consume ("/"))
         {
-          node = new_node (ND_DIV, node, primary ());
+          node = new_node (ND_DIV, node, array ());
           infer_type (node);
         }
       else
@@ -923,6 +924,23 @@ argdef ()
 }
 
 Node *
+array ()
+{
+  Node *lhs = primary();
+  if (consume("["))
+  {
+    Node *rhs = expr ();
+    expect ("]");
+    Node *add_node = new_node(ND_ADD, lhs, rhs);
+    infer_type(add_node);
+    Node *deref_node = new_node(ND_DEREF, add_node, NULL);
+    infer_type(deref_node);
+    return deref_node;
+  }
+  return lhs;
+}
+
+Node *
 primary ()
 {
   // 次のトークンが"("なら、"(" expr ")"のはず
@@ -996,11 +1014,11 @@ unary ()
   Node *node;
   if (consume ("+"))
     {
-      return primary ();
+      return array ();
     }
   if (consume ("-"))
     {
-      node = new_node (ND_SUB, new_node_num (0), primary ());
+      node = new_node (ND_SUB, new_node_num (0), array ());
       infer_type (node);
       return node;
     }
@@ -1033,5 +1051,5 @@ unary ()
           error_at (token->str, "sizeofで判別できませんでした。");
         }
     }
-  return primary ();
+  return array ();
 }
