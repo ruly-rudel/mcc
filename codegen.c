@@ -45,19 +45,28 @@ gen_lval (Node * node)
 void
 gen (Node * node)
 {
-  if (node->kind == ND_RETURN)
+  bool has_lhs = node->lhs != NULL;
+  bool has_rhs = node->rhs != NULL;
+
+  Type *lhs_type = has_lhs ? node->lhs->type : NULL;
+  Type *rhs_type = has_rhs ? node->rhs->type : NULL;
+
+  int id;
+  int arg_num;
+  Node *comma;
+
+  switch (node->kind)
     {
+    case ND_RETURN:
       gen (node->lhs);
       printf ("  pop rax\t\t\t# ND_RETURN\n");
       printf ("  mov rsp, rbp\n");
       printf ("  pop rbp\n");
       printf ("  ret\n");
       return;
-    }
 
-  if (node->kind == ND_IF)
-    {
-      int id = gen_label_id ();
+    case ND_IF:
+      id = gen_label_id ();
       gen (node->lhs);
       printf ("  pop rax\n");
       printf ("  cmp rax, 0\n");
@@ -71,11 +80,9 @@ gen (Node * node)
         }
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_WHILE)
-    {
-      int id = gen_label_id ();
+    case ND_WHILE:
+      id = gen_label_id ();
       printf (".Lbegin%06d:\n", id);
       gen (node->lhs);
       printf ("  pop rax\n");
@@ -85,11 +92,9 @@ gen (Node * node)
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_FOR)
-    {
-      int id = gen_label_id ();
+    case ND_FOR:
+      id = gen_label_id ();
       if (node->lhs)
         gen (node->lhs);
       printf (".Lbegin%06d:\n", id);
@@ -105,10 +110,8 @@ gen (Node * node)
       printf ("  jmp .Lbegin%06d\n", id);
       printf (".Lend%06d:\n", id);
       return;
-    }
 
-  if (node->kind == ND_BLOCK)
-    {
+    case ND_BLOCK:
       if (node->lhs)
         gen (node->lhs);
       while (node->rhs)
@@ -118,13 +121,10 @@ gen (Node * node)
           gen (node->lhs);
         }
       return;
-    }
 
-  if (node->kind == ND_CALL)
-    {
+    case ND_CALL:
       // prepare arguments
-      Node *comma = node->lhs;
-      int arg_num;
+      comma = node->lhs;
       for (arg_num = 0; arg_num < 6; arg_num++)
         {
           if (comma && comma->lhs)
@@ -146,10 +146,7 @@ gen (Node * node)
       printf ("  call %s\n", node->identity);
       printf ("  push rax\n");
       return;
-    }
 
-  switch (node->kind)
-    {
     case ND_NUM:
       printf ("  push %d\t\t\t# ND_NUM\n", node->val);
       return;
@@ -191,11 +188,7 @@ gen (Node * node)
   printf ("  pop rdi\n");
   printf ("  pop rax\n");
 
-  bool has_lhs = node->lhs != NULL;
-  bool has_rhs = node->rhs != NULL;
 
-  Type *lhs_type = has_lhs ? node->lhs->type : NULL;
-  Type *rhs_type = has_rhs ? node->rhs->type : NULL;
 
   switch (node->kind)
     {
