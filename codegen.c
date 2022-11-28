@@ -29,15 +29,20 @@ void gen (Node * node);
 void
 gen_lval (Node * node)
 {
-  if (node->kind != ND_LVAR)
-    {
-      gen (node->lhs);
-    }
-  else
+  if (node->kind == ND_LVAR)
     {
       printf ("  mov rax, rbp\n");
       printf ("  sub rax, %d\n", node->offset);
       printf ("  push rax\n");
+    }
+  else if (node->kind == ND_GVAR)
+    {
+      printf ("  lea rax, %s[rip]\n", node->identity);
+      printf ("  push rax\n");
+    }
+  else
+    {
+      gen (node->lhs);
     }
 }
 
@@ -151,8 +156,9 @@ gen (Node * node)
       printf ("  push %d\t\t\t# ND_NUM\n", node->val);
       return;
     case ND_LVAR:
+    case ND_GVAR:
       gen_lval (node);
-      if (node->type->ty != ARRAY)
+      if (node->type->ty != ARRAY)  // ARRAYの時はアドレス自体がpushされる
         {
           printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
           if(node->type->ty == INT)
@@ -315,7 +321,45 @@ parse_and_code_gen (char *src)
 
   // アセンブリの前半部分を出力
   printf (".intel_syntax noprefix\n");
+  printf ("\t.data\n");
 
+  // グローバル変数の確保
+  for (GVar * global = globals; global; global = global->next)
+  {
+      printf (".globl %s\n", global->name);
+      printf ("%s:\n", global->name);
+      int size;
+      if(global->type->ty == INT)
+      {
+        size = 4;
+      }
+      else if(global->type->ty == PTR)
+      {
+        size = 8;
+      }
+      else if(global->type->ty == ARRAY)
+      {
+        if(global->type->ptr_to->ty == INT)
+        {
+          size = 4 * global->type->array_size;
+        }
+        else if (global->type->ptr_to->ty == PTR)
+        {
+          size = 8 * global->type->array_size;
+        }
+        else
+        {
+          error("グローバル変数(配列)の型が認識できませんでした。");
+        }
+      }
+      else
+      {
+        error("グローバル変数の型が認識できませんでした。");
+      }
+      printf ("  .zero %d\n", size );
+  }
+
+  printf ("\t.text\n");
   // 先頭の式から順にコード生成
   for (Func * func = funcs; func; func = func->next)
     {

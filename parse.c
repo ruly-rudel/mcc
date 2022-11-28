@@ -7,7 +7,11 @@ char *user_input;
 // 現在着目しているトークン
 Token *token;
 
+// グローバル関数
 Func *funcs = NULL;
+
+// グローバル変数
+GVar *globals = NULL;
 
 // ローカル変数
 LVar *locals = NULL;
@@ -86,6 +90,22 @@ find_func_name (char *name)
     }
   return NULL;
 }
+
+
+GVar *
+find_global (Token * tok)
+{
+  for (GVar * gvar = globals; gvar; gvar = gvar->next)
+    {
+      if (gvar->len == tok->len
+          && !memcmp (tok->str, gvar->name, tok->len))
+        {
+          return gvar;
+        }
+    }
+  return NULL;
+}
+
 
 bool
 not_token_str (char *op)
@@ -403,8 +423,6 @@ program ()
   int i;
   for (i = 0; !at_eof (); i++)
     {
-      Func *func = calloc (1, sizeof (Func));
-
       consume ("int");
       Type *type_root = calloc (1, sizeof (Type));
       type_root->ty = INT;
@@ -418,21 +436,50 @@ program ()
       Token *tok = consume_ident ();
       if (tok)
         {
-          func->name = calloc (1, tok->len + 1);
-          memcpy (func->name, tok->str, tok->len);
-          func->name[tok->len] = '\0';
+          if(consume ("("))  // function definition
+          {
+            Func *func = calloc (1, sizeof (Func));
+            func->name = calloc (1, tok->len + 1);
+            memcpy (func->name, tok->str, tok->len);
+            func->name[tok->len] = '\0';
 
-          func->next = funcs;
-          funcs = func;
+            func->next = funcs;
+            funcs = func;
 
-          consume ("(");
-          locals = NULL;
-          func->argnum = argdefs ();
+            locals = NULL;
+            func->argnum = argdefs ();
 
-          expect ("{");
-          func->type = type_root;
-          func->ast_root = new_node (ND_BLOCK, block (), NULL);
-          func->locals = locals;
+            expect ("{");
+            func->type = type_root;
+            func->ast_root = new_node (ND_BLOCK, block (), NULL);
+            func->locals = locals;
+          }
+          else  // global variable
+          {
+            GVar *global = calloc (1, sizeof (GVar));
+            global->name = calloc (1, tok->len + 1);
+            memcpy (global->name, tok->str, tok->len);
+            global->name[tok->len] = '\0';
+            global->len  = tok->len;
+
+            if (consume ("["))
+            {
+              int array_size = expect_number ();
+              expect ("]");
+
+              Type *type = calloc (1, sizeof (Type));
+              type->ty = ARRAY;
+              type->ptr_to = type_root;
+              type->array_size = array_size;
+              type_root = type;
+            }
+
+            global->type = type_root;
+
+            global->next = globals;
+            globals = global;
+            expect(";");
+          }
         }
       else
         {
@@ -988,17 +1035,26 @@ primary ()
       else
         {
           Node *node = calloc (1, sizeof (Node));
-          node->kind = ND_LVAR;
-
           LVar *lvar = find_lvar (tok);
           if (lvar)
             {
+              node->kind = ND_LVAR;
               node->offset = lvar->offset;
               node->type = lvar->type;
             }
           else
             {
-              error_at (tok->str, "宣言されていません。");
+              GVar *global = find_global (tok);
+              if(global)
+              {
+                node->kind = ND_GVAR;
+                node->identity = global->name;
+                node->type = global->type;
+              }
+              else
+              {
+                error_at (tok->str, "宣言されていません。");
+              }
             }
           return node;
         }

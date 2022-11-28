@@ -91,5 +91,10 @@ assert 1  'int main() { int a[2]; a[0] = 1; return a[0]; }'
 assert 2  'int main() { int a[2]; a[1] = 2; a[0] = 1; return a[1]; }'
 assert 1  'int main() { int a[2]; a[0] = 1; a[1] = 2; return a[0]; }'
 assert 3  'int main() { int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1]; }'
+assert 1  'int a; int main() { a = 1; return a; }'
+assert 1  'int a[2]; int main() { a[0] = 1; return a[0]; }'
+assert 2  'int a[2]; int main() { a[1] = 2; a[0] = 1; return a[1]; }'
+assert 1  'int a[2]; int main() { a[0] = 1; a[1] = 2; return a[0]; }'
+assert 3  'int a[2]; int main() { a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1]; }'
 
 echo OK
