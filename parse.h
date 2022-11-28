@@ -54,6 +54,7 @@ typedef enum
 {
   ND_ASSIGN,			// =
   ND_LVAR,			// local variable
+  ND_GVAR,    // global variable
   ND_EQL,			// ==
   ND_NEQ,			// !=
   ND_LTE,			// <=
@@ -103,6 +104,15 @@ struct Func
   LVar *locals;
 };
 
+typedef struct GVar GVar;
+struct GVar
+{
+  GVar *next;
+  char *name;
+  int len;
+  Type *type;
+};
+
 
 // 入力プログラム
 extern char *user_input;
@@ -110,7 +120,11 @@ extern char *user_input;
 // 現在着目しているトークン
 extern Token *token;
 
+// グローバル関数
 extern Func *funcs;
+
+// グローバル変数
+extern GVar *globals;
 
 // ローカル変数
 extern LVar *locals;
