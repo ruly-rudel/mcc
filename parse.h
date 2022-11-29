@@ -100,6 +100,7 @@ struct Func
   char *name;
   Type *type;
   int argnum;
+  LVar *args;
   Node *ast_root;
   LVar *locals;
 };
@@ -131,5 +132,7 @@ extern LVar *locals;
 
 void program ();
 Token *tokenize (char *p);
+
+int type_size (Type * t);
 
 #endif // _parse_h_

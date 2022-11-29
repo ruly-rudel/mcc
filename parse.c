@@ -448,6 +448,7 @@ program ()
 
             locals = NULL;
             func->argnum = argdefs ();
+            func->args   = locals;
 
             expect ("{");
             func->type = type_root;
@@ -896,7 +897,25 @@ argdefs ()
 int
 type_size (Type * t)
 {
-
+  if (t->ty == ARRAY)
+    {
+      if (t->ptr_to->ty == INT)
+       {
+        return 4 * t->array_size;
+       }
+      else
+       {
+        return 8 * t->array_size;
+       }
+    }
+  else if(t->ty == INT)
+    {
+      return 4;
+    }
+  else  // PTR
+    {
+      return 8;
+    }
 }
 
 Token *
@@ -933,30 +952,7 @@ argdef ()
           lvar->next = locals;
           lvar->name = tok->str;
           lvar->len = tok->len;
-          if (locals)
-            {
-              if (locals->type->ty == ARRAY)
-        	{
-        	  if (locals->type->ptr_to->ty == INT)
-        	    {
-        	      lvar->offset =
-        		locals->offset + 4 * locals->type->array_size;
-        	    }
-        	  else
-        	    {
-        	      lvar->offset =
-        		locals->offset + 8 * locals->type->array_size;
-        	    }
-        	}
-              else
-        	{
-        	  lvar->offset = locals->offset + 8;
-        	}
-            }
-          else
-            {
-              lvar->offset = 8;
-            }
+          lvar->offset = locals ? locals->offset + type_size(type_root) : 8;
           lvar->type = type_root;
           locals = lvar;
         }
@@ -1094,18 +1090,7 @@ unary ()
     {
       node = unary ();
       infer_type (node);
-      if (node->type->ty == INT)
-        {
-          return new_node_num (4);
-        }
-      else if (node->type->ty == PTR)
-        {
-          return new_node_num (8);
-        }
-      else
-        {
-          error_at (token->str, "sizeofで判別できませんでした。");
-        }
+      return new_node_num (type_size(node->type));
     }
   return array ();
 }
