@@ -161,9 +161,14 @@ gen (Node * node)
       if (node->type->ty != ARRAY)  // ARRAYの時はアドレス自体がpushされる
         {
           printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
-          if(node->type->ty == INT)
+          if(node->type->ty == CHAR)
           {
-            printf ("  mov eax, [rax]\n");
+            printf ("  movsx eax, BYTE PTR [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else if(node->type->ty == INT)
+          {
+            printf ("  mov eax, DWORD PTR [rax]\n");
             printf ("  movsx rax, eax\n");
           }
           else
@@ -179,7 +184,11 @@ gen (Node * node)
 
       printf ("  pop rdi\t\t\t# ND_ASSIGN\n");
       printf ("  pop rax\n");
-      if(lhs_type->ty == INT)
+      if(lhs_type->ty == CHAR)
+      {
+        printf ("  mov [rax], dil\n");
+      }
+      else if(lhs_type->ty == INT)
       {
         printf ("  mov [rax], edi\n");
       }
@@ -214,13 +223,24 @@ gen (Node * node)
   switch (node->kind)
     {
     case ND_ADD:
-      if (node->type->ty == INT)
+      if (IS_NUM(node->type))
         {
           printf ("  add rax, rdi\n");
         }
-      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      else if (IS_PTR_CHR(node->type))
         {
-          if (lhs_type->ty == INT)
+          if (IS_NUM(lhs_type))
+            {
+              printf ("  lea rax, [rdi + rax]\n");
+            }
+          else
+            {
+              printf ("  lea rax, [rax + rdi]\n");
+            }
+        }
+      else if (IS_PTR_INT(node->type))
+        {
+          if (IS_NUM(lhs_type))
             {
               printf ("  lea rax, [rdi + rax * 4]\n");
             }
@@ -231,7 +251,7 @@ gen (Node * node)
         }
       else if (node->type->ty == PTR && node->type->ptr_to->ty == PTR)
         {
-          if (lhs_type->ty == INT)
+          if (IS_NUM(lhs_type))
             {
               printf ("  lea rax, [rdi + rax * 8]\n");
             }
@@ -246,14 +266,17 @@ gen (Node * node)
         }
       break;
     case ND_SUB:
-      if (node->type->ty == INT)
+      if (IS_NUM(node->type))
         {
-          if (lhs_type->ty == INT && rhs_type->ty == INT)
+          if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
             {
               printf ("  sub rax, rdi\n");
             }
-          else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
-        	   && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
+          else if (IS_PTR_CHR(lhs_type) && IS_PTR_CHR(rhs_type))
+            {
+              printf ("  sub rax, rdi\n");
+            }
+          else if (IS_PTR_INT(lhs_type) && IS_PTR_INT(rhs_type))
             {
               printf ("  sub rax, rdi\n");
               printf ("  sar rax, 2\n");
@@ -265,7 +288,7 @@ gen (Node * node)
               printf ("  sar rax, 3\n");
             }
         }
-      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      else if (IS_PTR_INT(node->type))
         {
           printf ("  shl rdi, 2\n");
           printf ("  sub rax, rdi\n");
@@ -313,6 +336,70 @@ gen (Node * node)
 }
 
 void
+push_args (LVar* lvar, int argpos)
+{
+  if(lvar)
+  {
+    push_args(lvar->next, argpos - 1);
+    switch(type_size(lvar->type))
+    {
+      case 4:
+        switch(argpos)
+        {
+            case 1:
+              printf ("  mov [rbp - %d], edi\n", lvar->offset);
+              break;
+            case 2:
+              printf ("  mov [rbp - %d], esi\n", lvar->offset);
+              break;
+            case 3:
+              printf ("  mov [rbp - %d], edx\n", lvar->offset);
+              break;
+            case 4:
+              printf ("  mov [rbp - %d], ecx\n", lvar->offset);
+              break;
+            case 5:
+              printf ("  mov [rbp - %d], r8d\n", lvar->offset);
+              break;
+            case 6:
+              printf ("  mov [rbp - %d], r9d\n", lvar->offset);
+              break;
+            default:
+              error ("内部エラー: argnumが異常です");
+              break;
+        }
+        break;
+      case 8:
+        switch(argpos)
+        {
+            case 1:
+              printf ("  mov [rbp - %d], rdi\n", lvar->offset);
+              break;
+            case 2:
+              printf ("  mov [rbp - %d], rsi\n", lvar->offset);
+              break;
+            case 3:
+              printf ("  mov [rbp - %d], rdx\n", lvar->offset);
+              break;
+            case 4:
+              printf ("  mov [rbp - %d], rci\n", lvar->offset);
+              break;
+            case 5:
+              printf ("  mov [rbp - %d], r8\n", lvar->offset);
+              break;
+            case 6:
+              printf ("  mov [rbp - %d], r9\n", lvar->offset);
+              break;
+            default:
+              error ("内部エラー: argnumが異常です");
+              break;
+        }
+        break;
+    }
+  }
+}
+
+void
 parse_and_code_gen (char *src)
 {
   user_input = src;
@@ -328,35 +415,7 @@ parse_and_code_gen (char *src)
   {
       printf (".globl %s\n", global->name);
       printf ("%s:\n", global->name);
-      int size;
-      if(global->type->ty == INT)
-      {
-        size = 4;
-      }
-      else if(global->type->ty == PTR)
-      {
-        size = 8;
-      }
-      else if(global->type->ty == ARRAY)
-      {
-        if(global->type->ptr_to->ty == INT)
-        {
-          size = 4 * global->type->array_size;
-        }
-        else if (global->type->ptr_to->ty == PTR)
-        {
-          size = 8 * global->type->array_size;
-        }
-        else
-        {
-          error("グローバル変数(配列)の型が認識できませんでした。");
-        }
-      }
-      else
-      {
-        error("グローバル変数の型が認識できませんでした。");
-      }
-      printf ("  .zero %d\n", size );
+      printf ("  .zero %d\n", type_size(global->type) );
   }
 
   printf ("\t.text\n");
@@ -371,37 +430,24 @@ parse_and_code_gen (char *src)
       printf ("  push rbp\n");
       printf ("  mov rbp, rsp\n");
 
-      int j = 0;
-      while (j < func->argnum)
-        {
-          switch (j + 1)
-            {
-            case 1:
-              printf ("  push rdi\n");
-              break;
-            case 2:
-              printf ("  push rsi\n");
-              break;
-            case 3:
-              printf ("  push rdx\n");
-              break;
-            case 4:
-              printf ("  push rcx\n");
-              break;
-            case 5:
-              printf ("  push r8\n");
-              break;
-            case 6:
-              printf ("  push r9\n");
-              break;
-            default:
-              error ("内部エラー: argnumが異常です");
-              break;
-            }
-          j++;
-        }
+      push_args(func->args, func->argnum);
 
-      printf ("  sub rsp, %d\n", 8 * (count_lvar () - func->argnum));
+      int offset;
+      if(func->locals)
+      {
+        offset = func->locals->offset + type_size(func->locals->type);
+      }
+      else
+      {
+        offset = 8;
+      }
+      #if 0
+      if(func->args)
+      {
+        offset = offset - (func->args->offset + type_size(func->args->type));
+      }
+      #endif
+      printf ("  sub rsp, %d\n", offset);
 
       gen (func->ast_root);
     }

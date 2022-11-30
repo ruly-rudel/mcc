@@ -268,6 +268,7 @@ char *keywords[] = {
   "while",
   "for",
   "int",
+  "char",
   "sizeof",
 };
 
@@ -423,9 +424,20 @@ program ()
   int i;
   for (i = 0; !at_eof (); i++)
     {
-      consume ("int");
       Type *type_root = calloc (1, sizeof (Type));
-      type_root->ty = INT;
+      if(consume ("int"))
+      {
+        type_root->ty = INT;
+      }
+      else if(consume ("char"))
+      {
+        type_root->ty = CHAR;
+      }
+      else
+      {
+        error_at(token->str, "型名が必要です。");
+      }
+
       while (consume ("*"))
         {
           Type *type = calloc (1, sizeof (Type));
@@ -448,6 +460,7 @@ program ()
 
             locals = NULL;
             func->argnum = argdefs ();
+            func->args   = locals;
 
             expect ("{");
             func->type = type_root;
@@ -576,9 +589,7 @@ stmt ()
         {
           expect (";");
         }
-      node =
-        new_node_4 (ND_FOR, initial_node, condition_node, inclemental_node,
-        	    body_node);
+      node = new_node_4 (ND_FOR, initial_node, condition_node, inclemental_node, body_node);
     }
   else if (argdef ())
     {
@@ -687,6 +698,7 @@ add ()
     }
 }
 
+
 Type *
 infer_type (Node * node)
 {
@@ -700,34 +712,21 @@ infer_type (Node * node)
     {
     case ND_ADD:
       node->type = calloc (1, sizeof (Type));
-      if (lhs_type->ty == INT && rhs_type->ty == INT)
+      if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
         }
-      else if ((lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
-        	&& rhs_type->ty == INT) || (rhs_type->ty == PTR
-        				    && rhs_type->ptr_to->ty == INT
-        				    && lhs_type->ty == INT)
-               || (lhs_type->ty == ARRAY && lhs_type->ptr_to->ty == INT
-        	   && rhs_type->ty == INT) || (rhs_type->ty == ARRAY
-        				       && rhs_type->ptr_to->ty == INT
-        				       && lhs_type->ty == INT))
+      else if ((IS_PTR(lhs_type) && IS_NUM(rhs_type)) || 
+               (IS_ARR(lhs_type) && IS_NUM(rhs_type)))
         {
           node->type->ty = PTR;
-          node->type->ptr_to = calloc (1, sizeof (Type));
-          node->type->ptr_to->ty = INT;
-          node->type->ptr_to->ptr_to = NULL;
+          node->type->ptr_to = lhs_type->ptr_to;
         }
-      else
-        if ((lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR
-             && rhs_type->ty == INT) || (rhs_type->ty == PTR
-        				 && rhs_type->ptr_to->ty == PTR
-        				 && lhs_type->ty == INT))
+      else if ((IS_PTR(rhs_type) && IS_NUM(lhs_type)) ||
+               (IS_ARR(rhs_type) && IS_NUM(lhs_type)))
         {
           node->type->ty = PTR;
-          node->type->ptr_to = calloc (1, sizeof (Type));
-          node->type->ptr_to->ty = PTR;
-          node->type->ptr_to->ptr_to = NULL;
+          node->type->ptr_to = rhs_type->ptr_to;
         }
       else
         {
@@ -737,29 +736,16 @@ infer_type (Node * node)
 
     case ND_SUB:
       node->type = calloc (1, sizeof (Type));
-      if ((lhs_type->ty == INT && rhs_type->ty == INT) ||
-          (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
-           && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
-          || (lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR
-              && rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR))
+      if ((IS_NUM(lhs_type) && IS_NUM(rhs_type)) ||
+          (IS_PTR_INT(lhs_type) && IS_PTR_INT(rhs_type)) ||
+          (IS_PTR_CHR(lhs_type) && IS_PTR_CHR(rhs_type)) ||
+          (lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR  && rhs_type->ty == PTR && rhs_type->ptr_to->ty == PTR))
         {
           node->type->ty = INT;
         }
-      else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
-               && rhs_type->ty == INT)
+      else if (IS_PTR(lhs_type) && IS_NUM(rhs_type))
         {
-          node->type->ty = PTR;
-          node->type->ptr_to = calloc (1, sizeof (Type));
-          node->type->ptr_to->ty = INT;
-          node->type->ptr_to->ptr_to = NULL;
-        }
-      else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == PTR
-               && rhs_type->ty == INT)
-        {
-          node->type->ty = PTR;
-          node->type->ptr_to = calloc (1, sizeof (Type));
-          node->type->ptr_to->ty = PTR;
-          node->type->ptr_to->ptr_to = NULL;
+          node->type = lhs_type;
         }
       else
         {
@@ -769,7 +755,7 @@ infer_type (Node * node)
 
     case ND_MUL:
       node->type = calloc (1, sizeof (Type));
-      if (lhs_type->ty == INT && rhs_type->ty == INT)
+      if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
         }
@@ -781,7 +767,7 @@ infer_type (Node * node)
 
     case ND_DIV:
       node->type = calloc (1, sizeof (Type));
-      if (lhs_type->ty == INT && rhs_type->ty == INT)
+      if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
         }
@@ -806,7 +792,7 @@ infer_type (Node * node)
       break;
 
     case ND_DEREF:
-      if (lhs_type->ty == PTR || lhs_type->ty == ARRAY)
+      if (IS_PTR(lhs_type) || IS_ARR(lhs_type))
         {
           node->type = lhs_type->ptr_to;
         }
@@ -896,78 +882,91 @@ argdefs ()
 int
 type_size (Type * t)
 {
-
+  if (t->ty == ARRAY)
+    {
+      if (t->ptr_to->ty == CHAR)
+        {
+          return t->array_size;
+        }
+      else if (t->ptr_to->ty == INT)
+        {
+          return 4 * t->array_size;
+        }
+      else
+        {
+          return 8 * t->array_size;
+        }
+    }
+  else if(t->ty == CHAR)
+    {
+      return 1;
+    }
+  else if(t->ty == INT)
+    {
+      return 4;
+    }
+  else  // PTR
+    {
+      return 8;
+    }
 }
 
 Token *
 argdef ()
 {
+  Type *type_root = NULL;
   if (consume ("int"))
     {
-      Type *type_root = calloc (1, sizeof (Type));
+      type_root = calloc (1, sizeof (Type));
       type_root->ty = INT;
-      while (consume ("*"))
+    }
+  else if(consume ("char"))
+    {
+      type_root = calloc (1, sizeof (Type));
+      type_root->ty = CHAR;
+    }
+  else
+    {
+      return NULL;
+    }
+
+  while (consume ("*"))
+    {
+      Type *type = calloc (1, sizeof (Type));
+      type->ty = PTR;
+      type->ptr_to = type_root;
+      type_root = type;
+    }
+  Token *tok = consume_ident ();
+
+  if (tok)
+    {
+      if (consume ("["))
         {
+          int array_size = expect_number ();
+          expect ("]");
+
           Type *type = calloc (1, sizeof (Type));
-          type->ty = PTR;
+          type->ty = ARRAY;
           type->ptr_to = type_root;
+          type->array_size = array_size;
           type_root = type;
         }
-      Token *tok = consume_ident ();
 
-      if (tok)
-        {
-          if (consume ("["))
-            {
-              int array_size = expect_number ();
-              expect ("]");
-
-              Type *type = calloc (1, sizeof (Type));
-              type->ty = ARRAY;
-              type->ptr_to = type_root;
-              type->array_size = array_size;
-              type_root = type;
-            }
-
-          LVar *lvar = calloc (1, sizeof (LVar));
-          lvar->next = locals;
-          lvar->name = tok->str;
-          lvar->len = tok->len;
-          if (locals)
-            {
-              if (locals->type->ty == ARRAY)
-        	{
-        	  if (locals->type->ptr_to->ty == INT)
-        	    {
-        	      lvar->offset =
-        		locals->offset + 4 * locals->type->array_size;
-        	    }
-        	  else
-        	    {
-        	      lvar->offset =
-        		locals->offset + 8 * locals->type->array_size;
-        	    }
-        	}
-              else
-        	{
-        	  lvar->offset = locals->offset + 8;
-        	}
-            }
-          else
-            {
-              lvar->offset = 8;
-            }
-          lvar->type = type_root;
-          locals = lvar;
-        }
-      else
-        {
-          error_at (tok->str, "識別子が必要です");
-        }
-
-      return tok;
+      LVar *lvar = calloc (1, sizeof (LVar));
+      lvar->next = locals;
+      lvar->name = tok->str;
+      lvar->len = tok->len;
+      lvar->offset = locals ? locals->offset + type_size(type_root) : 8;
+      lvar->type = type_root;
+      locals = lvar;
     }
-  return NULL;
+  else
+    {
+      error_at (tok->str, "識別子が必要です");
+    }
+
+  return tok;
 }
 
 Node *
@@ -1094,18 +1093,7 @@ unary ()
     {
       node = unary ();
       infer_type (node);
-      if (node->type->ty == INT)
-        {
-          return new_node_num (4);
-        }
-      else if (node->type->ty == PTR)
-        {
-          return new_node_num (8);
-        }
-      else
-        {
-          error_at (token->str, "sizeofで判別できませんでした。");
-        }
+      return new_node_num (type_size(node->type));
     }
   return array ();
 }
