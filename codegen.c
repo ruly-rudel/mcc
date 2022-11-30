@@ -161,9 +161,14 @@ gen (Node * node)
       if (node->type->ty != ARRAY)  // ARRAYの時はアドレス自体がpushされる
         {
           printf ("  pop rax\t\t\t# ND_LVAR %d\n", node->type->ty);
-          if(node->type->ty == INT)
+          if(node->type->ty == CHAR)
           {
-            printf ("  mov eax, [rax]\n");
+            printf ("  movsx eax, BYTE PTR [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else if(node->type->ty == INT)
+          {
+            printf ("  mov eax, DWORD PTR [rax]\n");
             printf ("  movsx rax, eax\n");
           }
           else
@@ -179,7 +184,11 @@ gen (Node * node)
 
       printf ("  pop rdi\t\t\t# ND_ASSIGN\n");
       printf ("  pop rax\n");
-      if(lhs_type->ty == INT)
+      if(lhs_type->ty == CHAR)
+      {
+        printf ("  mov [rax], dil\n");
+      }
+      else if(lhs_type->ty == INT)
       {
         printf ("  mov [rax], edi\n");
       }
@@ -214,13 +223,24 @@ gen (Node * node)
   switch (node->kind)
     {
     case ND_ADD:
-      if (node->type->ty == INT)
+      if (IS_NUM(node->type))
         {
           printf ("  add rax, rdi\n");
         }
-      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      else if (IS_PTR_CHR(node->type))
         {
-          if (lhs_type->ty == INT)
+          if (IS_NUM(lhs_type))
+            {
+              printf ("  lea rax, [rdi + rax]\n");
+            }
+          else
+            {
+              printf ("  lea rax, [rax + rdi]\n");
+            }
+        }
+      else if (IS_PTR_INT(node->type))
+        {
+          if (IS_NUM(lhs_type))
             {
               printf ("  lea rax, [rdi + rax * 4]\n");
             }
@@ -231,7 +251,7 @@ gen (Node * node)
         }
       else if (node->type->ty == PTR && node->type->ptr_to->ty == PTR)
         {
-          if (lhs_type->ty == INT)
+          if (IS_NUM(lhs_type))
             {
               printf ("  lea rax, [rdi + rax * 8]\n");
             }
@@ -246,14 +266,17 @@ gen (Node * node)
         }
       break;
     case ND_SUB:
-      if (node->type->ty == INT)
+      if (IS_NUM(node->type))
         {
-          if (lhs_type->ty == INT && rhs_type->ty == INT)
+          if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
             {
               printf ("  sub rax, rdi\n");
             }
-          else if (lhs_type->ty == PTR && lhs_type->ptr_to->ty == INT
-        	   && rhs_type->ty == PTR && rhs_type->ptr_to->ty == INT)
+          else if (IS_PTR_CHR(lhs_type) && IS_PTR_CHR(rhs_type))
+            {
+              printf ("  sub rax, rdi\n");
+            }
+          else if (IS_PTR_INT(lhs_type) && IS_PTR_INT(rhs_type))
             {
               printf ("  sub rax, rdi\n");
               printf ("  sar rax, 2\n");
@@ -265,7 +288,7 @@ gen (Node * node)
               printf ("  sar rax, 3\n");
             }
         }
-      else if (node->type->ty == PTR && node->type->ptr_to->ty == INT)
+      else if (IS_PTR_INT(node->type))
         {
           printf ("  shl rdi, 2\n");
           printf ("  sub rax, rdi\n");

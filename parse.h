@@ -28,8 +28,7 @@ typedef struct Type Type;
 // 変数の型の種類
 struct Type
 {
-  enum
-  { INT, PTR, ARRAY } ty;
+  enum { INT, PTR, ARRAY, CHAR } ty;
   struct Type *ptr_to;
   size_t array_size;
 };
@@ -129,6 +128,15 @@ extern GVar *globals;
 
 // ローカル変数
 extern LVar *locals;
+
+
+
+#define IS_NUM(T)      ((T)->ty == INT   || (T)->ty == CHAR)
+#define IS_PTR(T)      ((T)->ty == PTR)
+#define IS_ARR(T)      ((T)->ty == ARRAY)
+#define IS_PTR_INT(T)  ((T)->ty == PTR   && (T)->ptr_to->ty == INT)
+#define IS_PTR_CHR(T)  ((T)->ty == PTR   && (T)->ptr_to->ty == CHAR)
+#define IS_ARR_INT(T)  ((T)->ty == ARRAY && (T)->ptr_to->ty == INT)
 
 void program ();
 Token *tokenize (char *p);
