@@ -111,6 +111,13 @@ assert 1  'char a[2]; int main() { a[0] = 1; return a[0]; }'
 assert 2  'char a[2]; int main() { a[1] = 2; a[0] = 1; return a[1]; }'
 assert 1  'char a[2]; int main() { a[0] = 1; a[1] = 2; return a[0]; }'
 assert 3  'char a[2]; int main() { a[0] = 1; a[1] = 2; char *p; p = a; return p[0] + p[1]; }'
+assert 97  'int main() { char *x; x = "abc"; return x[0]; }'
+assert 98  'int main() { char *x; x = "abc"; return x[1]; }'
+assert 99  'int main() { char *x; x = "abc"; return x[2]; }'
+assert 97  'int main() { return "abc"[0]; }'
+assert 98  'int main() { return "abc"[1]; }'
+assert 99  'int main() { return "abc"[2]; }'
+assert 99  'int main() { printf("abcde\n"); return "abc"[2]; }'
 
 
 echo OK

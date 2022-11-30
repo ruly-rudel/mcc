@@ -148,6 +148,7 @@ gen (Node * node)
       printf ("  pop rdx\n");
       printf ("  pop rsi\n");
       printf ("  pop rdi\n");
+      printf ("  mov al, 0\n");
       printf ("  call %s\n", node->identity);
       printf ("  push rax\n");
       return;
@@ -155,6 +156,11 @@ gen (Node * node)
     case ND_NUM:
       printf ("  push %d\t\t\t# ND_NUM\n", node->val);
       return;
+    case ND_STR:
+      printf ("  lea rax, .LC%d[rip]\n", node->offset);
+      printf ("  push rax\n");
+      return ;
+
     case ND_LVAR:
     case ND_GVAR:
       gen_lval (node);
@@ -418,6 +424,13 @@ parse_and_code_gen (char *src)
       printf ("  .zero %d\n", type_size(global->type) );
   }
 
+  // 文字列リテラルの確保
+  for (StrLit *strlit = strlits; strlit; strlit = strlit->next)
+  {
+      printf (".LC%d:\n", strlit->id);
+      printf ("  .string \"%s\"\n", strlit->str );
+  }
+
   printf ("\t.text\n");
   // 先頭の式から順にコード生成
   for (Func * func = funcs; func; func = func->next)
@@ -441,12 +454,6 @@ parse_and_code_gen (char *src)
       {
         offset = 8;
       }
-      #if 0
-      if(func->args)
-      {
-        offset = offset - (func->args->offset + type_size(func->args->type));
-      }
-      #endif
       printf ("  sub rsp, %d\n", offset);
 
       gen (func->ast_root);

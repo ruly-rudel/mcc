@@ -16,6 +16,10 @@ GVar *globals = NULL;
 // ローカル変数
 LVar *locals = NULL;
 
+// 文字列リテラル
+StrLit *strlits = NULL;
+int strlit_num = 0;
+
 bool at_eof ();
 
 // エラー箇所を報告する
@@ -151,6 +155,21 @@ consume_ident ()
     }
 }
 
+Token *
+consume_string ()
+{
+  if (token->kind == TK_STRING)
+    {
+      Token *token_ret = token;
+      token = token->next;
+      return token_ret;
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
 void
@@ -198,8 +217,7 @@ new_token (TokenKind kind, Token * cur, char *str, int len)
 int
 is_alnum (char c)
 {
-  return ('a' <= c && c <= 'z') ||
-    ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
 }
 
 bool
@@ -329,19 +347,36 @@ tokenize (char *p)
               int ident_len = 1;
               p++;
               while (*p)
-        	{
-        	  if (is_alnum (*p))
-        	    {
-        	      ident_len++;
-        	      p++;
-        	      continue;
-        	    }
-        	  else
-        	    {
-        	      cur = new_token (TK_IDENT, cur, begin, ident_len);
-        	      break;
-        	    }
-        	}
+              {
+                  if (is_alnum (*p))
+                  {
+                      ident_len++;
+                      p++;
+                      continue;
+                  }
+                  else
+                  {
+                      cur = new_token (TK_IDENT, cur, begin, ident_len);
+                      break;
+                  }
+              }
+              continue;
+            }
+
+            if(*p == '"')
+            {
+              cur = new_token (TK_RESERVED, cur, p, 1);
+              p++;
+              int string_len = 0;
+              char *begin = p;
+              while(*p != '"')
+              {
+                string_len++;
+                p++;
+              }
+              cur = new_token(TK_STRING, cur, begin, string_len);
+              cur = new_token(TK_RESERVED, cur, p, 1);
+              p++;
               continue;
             }
           error_at (p, "トークナイズできません");
@@ -782,6 +817,13 @@ infer_type (Node * node)
       node->type->ty = INT;
       break;
 
+    case ND_STR:
+      node->type = calloc (1, sizeof (Type));
+      node->type->ty = PTR;
+      node->type->ptr_to = calloc (1, sizeof (Type));
+      node->type->ptr_to->ty = CHAR;
+      break;
+
     case ND_LVAR:
       break;
 
@@ -1057,6 +1099,28 @@ primary ()
             }
           return node;
         }
+    }
+
+    // or string ?
+  if (consume ("\""))
+    {
+      tok = consume_string();
+      Node *node = calloc(1, sizeof (Node));
+      node->kind = ND_STR;
+      node->offset = strlit_num;
+      infer_type(node);
+
+      StrLit *strlit = calloc(1, sizeof(StrLit));
+      strlit->id = strlit_num;
+      strlit->str = calloc(tok->len + 1, 1);
+      memcpy (strlit->str, tok->str, tok->len);
+      strlit->str[tok->len] = '\0';
+      expect("\"");
+      strlit_num++;
+      strlit->next = strlits;
+      strlits = strlit;
+
+      return node;
     }
 
   // そうでなければ数値のはず
