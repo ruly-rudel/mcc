@@ -7,6 +7,7 @@ typedef enum
   TK_RESERVED,			// 記号
   TK_IDENT,			// 識別子
   TK_NUM,			// 整数トークン
+  TK_STRING,  // 文字列トークン
   TK_EOF,			// 入力の終わりを表すトークン
 } TokenKind;
 
@@ -74,6 +75,7 @@ typedef enum
   ND_ADDR,			// &(address)
   ND_DEREF,			// *(dereference)
   ND_DEFIDENT,			// define identity
+  ND_STR, 			// string literal
 } NodeKind;
 
 
@@ -113,6 +115,14 @@ struct GVar
   Type *type;
 };
 
+typedef struct StrLit StrLit;
+struct StrLit
+{
+  StrLit *next;
+  char *str;
+  int id;
+};
+
 
 // 入力プログラム
 extern char *user_input;
@@ -129,7 +139,8 @@ extern GVar *globals;
 // ローカル変数
 extern LVar *locals;
 
-
+// 文字列リテラル
+extern StrLit *strlits;
 
 #define IS_NUM(T)      ((T)->ty == INT   || (T)->ty == CHAR)
 #define IS_PTR(T)      ((T)->ty == PTR)
