@@ -3,7 +3,8 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./mcc "$input" > tmp.s
+  echo "$input" > /tmp/tmp.c
+  ./mcc /tmp/tmp.c > tmp.s
   gcc -o tmp tmp.s stub.o
   ./tmp
   actual="$?"
