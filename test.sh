@@ -17,6 +17,23 @@ assert() {
   fi
 }
 
+assert_file() {
+  expected="$1"
+  input="$2"
+
+  ./mcc "$input" > tmp.s
+  gcc -o tmp tmp.s stub.o
+  ./tmp
+  actual="$?"
+
+  if [ "$actual" = "$expected" ]; then
+    echo "$input => $actual"
+  else
+    echo "$input => $expected expected, but got $actual"
+    exit 1
+  fi
+}
+
 assert 21 'int main(){return 5+20-4;}'
 assert 41 'int main(){return  12 + 34 - 5 ;}'
 assert 47 'int main(){return 5+6*7;}'
@@ -119,6 +136,7 @@ assert 97  'int main() { return "abc"[0]; }'
 assert 98  'int main() { return "abc"[1]; }'
 assert 99  'int main() { return "abc"[2]; }'
 assert 99  'int main() { printf("abcde\n"); return "abc"[2]; }'
+assert_file 30 tv/tv0000.c
 
 
 echo OK
