@@ -126,6 +126,7 @@ struct StrLit
 
 // 入力プログラム
 extern char *user_input;
+extern char *filename;
 
 // 現在着目しているトークン
 extern Token *token;
