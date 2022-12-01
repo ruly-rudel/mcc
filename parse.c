@@ -438,6 +438,20 @@ tokenize (char *p)
               p++;
               continue;
             }
+
+            if(*p == '\'')
+            {
+              cur = new_token (TK_RESERVED, cur, p++, 1);
+              cur = new_token (TK_NUM, cur, p, 1);
+              cur->val = *p++;
+              cur = new_token (TK_RESERVED, cur, p, 1);
+              if(*p != '\'')
+              {
+                error_at (p, "'ではありません。");
+              }
+              p++;
+              continue;
+            }
           error_at (p, "トークナイズできません");
         }
 
@@ -1178,6 +1192,17 @@ primary ()
       strlit_num++;
       strlit->next = strlits;
       strlits = strlit;
+
+      return node;
+    }
+
+    // or char ?
+    if (consume("'"))
+    {
+      Node *node = new_node_num (expect_number ());
+      infer_type (node);
+      node->type->ty = CHAR;
+      expect("'");
 
       return node;
     }
