@@ -137,6 +137,8 @@ assert 98  'int main() { return "abc"[1]; }'
 assert 99  'int main() { return "abc"[2]; }'
 assert 99  'int main() { printf("abcde\n"); return "abc"[2]; }'
 assert_file 30 tv/tv0000.c
+assert 97  "int main() { return 'a'; }"
+assert 99  "int main() { return 'a' + 2; }"
 
 
 echo OK
