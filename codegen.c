@@ -421,7 +421,27 @@ parse_and_code_gen (char *src)
   {
       printf (".globl %s\n", global->name);
       printf ("%s:\n", global->name);
-      printf ("  .zero %d\n", type_size(global->type) );
+      if(global->init_val == 0)
+      {
+        printf ("  .zero %d\n", type_size(global->type) );
+      }
+      else
+      {
+        switch(type_size(global->type))
+        {
+          case 1:
+            printf ("  .byte %d\n", global->init_val );
+            break;
+
+          case 4:
+            printf ("  .long %d\n", global->init_val );
+            break;
+
+          default:
+            error("まだサポートされていないグローバル変数の初期化です。");
+            break;
+        }
+      }
   }
 
   // 文字列リテラルの確保

@@ -113,6 +113,7 @@ struct GVar
   char *name;
   int len;
   Type *type;
+  int init_val;
 };
 
 typedef struct StrLit StrLit;

@@ -604,10 +604,26 @@ program ()
             }
 
             global->type = type_root;
+            if(consume("="))
+            {
+              if(consume("'"))
+              {
+                global->init_val = expect_number();
+                expect("'");
+              }
+              else
+              {
+                global->init_val = expect_number();
+              }
+            }
+            else
+            {
+              global->init_val = 0;
+            }
+            expect(";");
 
             global->next = globals;
             globals = global;
-            expect(";");
           }
         }
       else
