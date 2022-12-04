@@ -435,28 +435,31 @@ parse_and_code_gen (char *src)
   // 先頭の式から順にコード生成
   for (Func * func = funcs; func; func = func->next)
     {
-      locals = func->locals;
-      printf (".globl %s\n", func->name);
-      printf ("%s:\n", func->name);
-
-      // プロローグ
-      printf ("  push rbp\n");
-      printf ("  mov rbp, rsp\n");
-
-      push_args(func->args, func->argnum);
-
-      int offset;
-      if(func->locals)
+      if(func->ast_root)
       {
-        offset = func->locals->offset + type_size(func->locals->type);
-      }
-      else
-      {
-        offset = 8;
-      }
-      printf ("  sub rsp, %d\n", offset);
+          locals = func->locals;
+          printf (".globl %s\n", func->name);
+          printf ("%s:\n", func->name);
 
-      gen (func->ast_root);
+          // プロローグ
+          printf ("  push rbp\n");
+          printf ("  mov rbp, rsp\n");
+
+          push_args(func->args, func->argnum);
+
+          int offset;
+          if(func->locals)
+          {
+            offset = func->locals->offset + type_size(func->locals->type);
+          }
+          else
+          {
+            offset = 8;
+          }
+          printf ("  sub rsp, %d\n", offset);
+
+          gen (func->ast_root);
+      }
     }
 
 }

@@ -569,10 +569,18 @@ program ()
             locals = NULL;
             func->argnum = argdefs ();
             func->args   = locals;
-
-            expect ("{");
             func->type = type_root;
-            func->ast_root = new_node (ND_BLOCK, block (), NULL);
+
+            if(look_at("{"))
+            {
+              expect ("{");
+              func->ast_root = new_node (ND_BLOCK, block (), NULL);
+            }
+            else
+            {
+              expect (";");
+              func->ast_root = NULL;
+            }
             func->locals = locals;
           }
           else  // global variable
@@ -604,7 +612,7 @@ program ()
         }
       else
         {
-          error_at (token->str, "関数名が必要です");
+          error_at (token->str, "関数名または変数名が必要です");
         }
     }
 }
