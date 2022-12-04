@@ -421,26 +421,30 @@ parse_and_code_gen (char *src)
   {
       printf (".globl %s\n", global->name);
       printf ("%s:\n", global->name);
-      if(global->init_val == 0)
+      if(global->init_val)
       {
-        printf ("  .zero %d\n", type_size(global->type) );
-      }
-      else
-      {
-        switch(type_size(global->type))
+        switch(global->init_val->init_type)
         {
-          case 1:
-            printf ("  .byte %d\n", global->init_val );
+          case INIT_CHAR:
+            printf ("  .byte %d\n", global->init_val->val );
             break;
 
-          case 4:
-            printf ("  .long %d\n", global->init_val );
+          case INIT_INT:
+            printf ("  .long %d\n", global->init_val->val );
+            break;
+
+          case INIT_STRPTR:
+            printf ("  .quad .LC%d\n", global->init_val->val );
             break;
 
           default:
             error("まだサポートされていないグローバル変数の初期化です。");
             break;
         }
+      }
+      else
+      {
+        printf ("  .zero %d\n", type_size(global->type) );
       }
   }
 

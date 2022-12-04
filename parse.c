@@ -606,19 +606,43 @@ program ()
             global->type = type_root;
             if(consume("="))
             {
-              if(consume("'"))
+              if (consume ("\""))
               {
-                global->init_val = expect_number();
+                tok = consume_string();
+                global->init_val = calloc(1, sizeof (IVar));
+                global->init_val->next = NULL;
+                global->init_val->init_type = INIT_STRPTR;
+                global->init_val->val = strlit_num;
+
+                StrLit *strlit = calloc(1, sizeof(StrLit));
+                strlit->id = strlit_num;
+                strlit->str = calloc(tok->len + 1, 1);
+                memcpy (strlit->str, tok->str, tok->len);
+                strlit->str[tok->len] = '\0';
+                expect("\"");
+                strlit_num++;
+                strlit->next = strlits;
+                strlits = strlit;
+              }
+              else if(consume("'"))
+              {
+                global->init_val = calloc(1, sizeof (IVar));
+                global->init_val->next = NULL;
+                global->init_val->init_type = type_root->ty == CHAR ? INIT_CHAR : INIT_INT;
+                global->init_val->val = expect_number();
                 expect("'");
               }
               else
               {
-                global->init_val = expect_number();
+                global->init_val = calloc(1, sizeof (IVar));
+                global->init_val->next = NULL;
+                global->init_val->init_type = type_root->ty == CHAR ? INIT_CHAR : INIT_INT;
+                global->init_val->val = expect_number();
               }
             }
             else
             {
-              global->init_val = 0;
+              global->init_val = NULL;
             }
             expect(";");
 

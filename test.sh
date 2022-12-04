@@ -141,6 +141,8 @@ assert 97  "int main() { return 'a'; }"
 assert 99  "int main() { return 'a' + 2; }"
 assert 97  "char a = 'a'; int main() { return a; }"
 assert 2  'int a = 2; int main() { return a; }'
+assert 97  'char *a = "abc"; int main() { return a[0]; }'
+assert 99  'char *a = "abc"; int main() { return a[2]; }'
 
 
 echo OK

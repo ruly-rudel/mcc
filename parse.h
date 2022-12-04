@@ -106,6 +106,14 @@ struct Func
   LVar *locals;
 };
 
+typedef struct IVar IVar;
+struct IVar
+{
+  IVar *next;
+  enum {INIT_INT, INIT_CHAR, INIT_STR, INIT_STRPTR} init_type;
+  int val;  // value at int/char, strlit_num at str and strptr
+};
+
 typedef struct GVar GVar;
 struct GVar
 {
@@ -113,7 +121,7 @@ struct GVar
   char *name;
   int len;
   Type *type;
-  int init_val;
+  IVar *init_val;
 };
 
 typedef struct StrLit StrLit;
