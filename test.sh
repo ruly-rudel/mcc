@@ -143,6 +143,20 @@ assert 97  "char a = 'a'; int main() { return a; }"
 assert 2  'int a = 2; int main() { return a; }'
 assert 97  'char *a = "abc"; int main() { return a[0]; }'
 assert 99  'char *a = "abc"; int main() { return a[2]; }'
+assert 97  'char a[] = "abc"; int main() { return a[0]; }'
+assert 99  'char a[] = "abc"; int main() { return a[2]; }'
+assert 1  'int a[3] = {1, 2, 3}; int main() { return a[0]; }'
+assert 3  'int a[3] = {1, 2, 3}; int main() { return a[2]; }'
+assert 1  'char a[3] = {1, 2, 3}; int main() { return a[0]; }'
+assert 3  'char a[3] = {1, 2, 3}; int main() { return a[2]; }'
+assert 12  'int a[3] = {1, 2, 3}; int main() { return sizeof(a); }'
+assert 3  'char a[3] = {1, 2, 3}; int main() { return sizeof(a); }'
+assert 1  'int a[] = {1, 2, 3}; int main() { return a[0]; }'
+assert 3  'int a[] = {1, 2, 3}; int main() { return a[2]; }'
+assert 1  'char a[] = {1, 2, 3}; int main() { return a[0]; }'
+assert 3  'char a[] = {1, 2, 3}; int main() { return a[2]; }'
+assert 12  'int a[] = {1, 2, 3}; int main() { return sizeof(a); }'
+assert 3  'char a[] = {1, 2, 3}; int main() { return sizeof(a); }'
 
 
 echo OK

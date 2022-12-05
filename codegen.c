@@ -423,23 +423,30 @@ parse_and_code_gen (char *src)
       printf ("%s:\n", global->name);
       if(global->init_val)
       {
-        switch(global->init_val->init_type)
+        for(IVar *init_val = global->init_val; init_val; init_val = init_val->next)
         {
-          case INIT_CHAR:
-            printf ("  .byte %d\n", global->init_val->val );
-            break;
+          switch(init_val->init_type)
+          {
+            case INIT_CHAR:
+              printf ("  .byte %d\n", init_val->val );
+              break;
 
-          case INIT_INT:
-            printf ("  .long %d\n", global->init_val->val );
-            break;
+            case INIT_INT:
+              printf ("  .long %d\n", init_val->val );
+              break;
 
-          case INIT_STRPTR:
-            printf ("  .quad .LC%d\n", global->init_val->val );
-            break;
+            case INIT_STR:
+              printf ("  .string \"%s\"\n", find_strlit_from_id(init_val->val)->str );
+              break;
 
-          default:
-            error("まだサポートされていないグローバル変数の初期化です。");
-            break;
+            case INIT_STRPTR:
+              printf ("  .quad .LC%d\n", init_val->val );
+              break;
+
+            default:
+              error("まだサポートされていないグローバル変数の初期化です。");
+              break;
+          }
         }
       }
       else

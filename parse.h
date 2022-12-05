@@ -162,6 +162,9 @@ extern StrLit *strlits;
 void program ();
 Token *tokenize (char *p);
 
+StrLit *
+find_strlit_from_id(int id);
+
 int type_size (Type * t);
 
 #endif // _parse_h_

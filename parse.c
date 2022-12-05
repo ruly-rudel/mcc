@@ -152,6 +152,20 @@ find_global (Token * tok)
   return NULL;
 }
 
+StrLit *
+find_strlit_from_id(int id)
+{
+  for (StrLit *strlit = strlits; strlit; strlit = strlit->next)
+  {
+    if(strlit->id == id)
+    {
+      return strlit;
+    }
+  }
+  return NULL;
+}
+
+
 
 bool
 not_token_str (char *op)
@@ -526,6 +540,47 @@ Node *array ();
 Node *primary ();
 Node *unary ();
 
+
+IVar *
+init_commas (Type* ty)
+{
+  IVar *init_val = NULL;
+  init_val = calloc (1, sizeof (IVar));
+
+  init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
+  init_val->val = expect_number();
+
+  if (look_at (","))
+    {
+      expect (",");
+      init_val->next = init_commas (ty);
+      return init_val;
+    }
+  else
+    {
+      init_val->next = NULL;
+      return init_val;
+    }
+}
+
+int
+count_init_val(IVar *init_val)
+{
+  if(init_val)
+  {
+    int i = 0;
+    for(; init_val; init_val = init_val->next)
+    {
+      i = i + 1;
+    }
+    return i;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 void
 program ()
 {
@@ -593,8 +648,16 @@ program ()
 
             if (consume ("["))
             {
-              int array_size = expect_number ();
-              expect ("]");
+              int array_size;
+              if(consume ("]"))
+              {
+                array_size = -1;
+              }
+              else
+              {
+                array_size = expect_number ();
+                expect ("]");
+              }
 
               Type *type = calloc (1, sizeof (Type));
               type->ty = ARRAY;
@@ -606,12 +669,21 @@ program ()
             global->type = type_root;
             if(consume("="))
             {
-              if (consume ("\""))
+              if (consume ("{"))
+              {
+                global->init_val = init_commas(global->type->ptr_to); // assume global->type->ty == ARRAY
+                if(global->type->ty == ARRAY && global->type->array_size == -1)
+                {
+                  global->type->array_size = count_init_val(global->init_val);
+                }
+                expect ("}");
+              }
+              else if (consume ("\""))
               {
                 tok = consume_string();
                 global->init_val = calloc(1, sizeof (IVar));
                 global->init_val->next = NULL;
-                global->init_val->init_type = INIT_STRPTR;
+                global->init_val->init_type = IS_PTR_CHR(global->type) ? INIT_STRPTR : INIT_STR;
                 global->init_val->val = strlit_num;
 
                 StrLit *strlit = calloc(1, sizeof(StrLit));
@@ -623,6 +695,11 @@ program ()
                 strlit_num++;
                 strlit->next = strlits;
                 strlits = strlit;
+
+                if(global->type->ty == ARRAY && global->type->array_size == -1)
+                {
+                  global->type->array_size = tok->len + 1;
+                }
               }
               else if(consume("'"))
               {
