@@ -58,7 +58,7 @@ void error_at(char *loc, char *fmt, ...)
   fprintf (stderr, "^ ");
   vfprintf (stderr, fmt, ap);
   fprintf (stderr, "\n");
-  exit (1);
+  abort ();
 }
 
 void
@@ -547,8 +547,36 @@ init_commas (Type* ty)
   IVar *init_val = NULL;
   init_val = calloc (1, sizeof (IVar));
 
-  init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
-  init_val->val = expect_number();
+  if (consume ("\""))
+  {
+    Token *tok = consume_string();
+    init_val->init_type = IS_PTR_CHR(ty) ? INIT_STRPTR : INIT_STR;
+    init_val->val = strlit_num;
+
+    StrLit *strlit = calloc(1, sizeof(StrLit));
+    strlit->id = strlit_num;
+    strlit->str = calloc(tok->len + 1, 1);
+    memcpy (strlit->str, tok->str, tok->len);
+    strlit->str[tok->len] = '\0';
+    expect("\"");
+    strlit_num++;
+    strlit->next = strlits;
+    strlits = strlit;
+  }
+  else if(consume("'"))
+  {
+    init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
+    init_val->val = expect_number();
+    expect("'");
+  }
+  else
+  {
+    init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
+    init_val->val = expect_number();
+  }
+
+
+
 
   if (look_at (","))
     {
@@ -1213,7 +1241,7 @@ Node *
 array ()
 {
   Node *lhs = primary();
-  if (consume("["))
+  while (consume("["))
   {
     Node *rhs = expr ();
     expect ("]");
@@ -1221,7 +1249,7 @@ array ()
     infer_type(add_node);
     Node *deref_node = new_node(ND_DEREF, add_node, NULL);
     infer_type(deref_node);
-    return deref_node;
+    lhs = deref_node;
   }
   return lhs;
 }
