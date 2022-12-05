@@ -58,7 +58,7 @@ void error_at(char *loc, char *fmt, ...)
   fprintf (stderr, "^ ");
   vfprintf (stderr, fmt, ap);
   fprintf (stderr, "\n");
-  exit (1);
+  abort ();
 }
 
 void
@@ -151,6 +151,20 @@ find_global (Token * tok)
     }
   return NULL;
 }
+
+StrLit *
+find_strlit_from_id(int id)
+{
+  for (StrLit *strlit = strlits; strlit; strlit = strlit->next)
+  {
+    if(strlit->id == id)
+    {
+      return strlit;
+    }
+  }
+  return NULL;
+}
+
 
 
 bool
@@ -526,6 +540,75 @@ Node *array ();
 Node *primary ();
 Node *unary ();
 
+
+IVar *
+init_commas (Type* ty)
+{
+  IVar *init_val = NULL;
+  init_val = calloc (1, sizeof (IVar));
+
+  if (consume ("\""))
+  {
+    Token *tok = consume_string();
+    init_val->init_type = IS_PTR_CHR(ty) ? INIT_STRPTR : INIT_STR;
+    init_val->val = strlit_num;
+
+    StrLit *strlit = calloc(1, sizeof(StrLit));
+    strlit->id = strlit_num;
+    strlit->str = calloc(tok->len + 1, 1);
+    memcpy (strlit->str, tok->str, tok->len);
+    strlit->str[tok->len] = '\0';
+    expect("\"");
+    strlit_num++;
+    strlit->next = strlits;
+    strlits = strlit;
+  }
+  else if(consume("'"))
+  {
+    init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
+    init_val->val = expect_number();
+    expect("'");
+  }
+  else
+  {
+    init_val->init_type = ty->ty == CHAR ? INIT_CHAR : INIT_INT;
+    init_val->val = expect_number();
+  }
+
+
+
+
+  if (look_at (","))
+    {
+      expect (",");
+      init_val->next = init_commas (ty);
+      return init_val;
+    }
+  else
+    {
+      init_val->next = NULL;
+      return init_val;
+    }
+}
+
+int
+count_init_val(IVar *init_val)
+{
+  if(init_val)
+  {
+    int i = 0;
+    for(; init_val; init_val = init_val->next)
+    {
+      i = i + 1;
+    }
+    return i;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 void
 program ()
 {
@@ -593,8 +676,16 @@ program ()
 
             if (consume ("["))
             {
-              int array_size = expect_number ();
-              expect ("]");
+              int array_size;
+              if(consume ("]"))
+              {
+                array_size = -1;
+              }
+              else
+              {
+                array_size = expect_number ();
+                expect ("]");
+              }
 
               Type *type = calloc (1, sizeof (Type));
               type->ty = ARRAY;
@@ -604,10 +695,37 @@ program ()
             }
 
             global->type = type_root;
+            if(consume("="))
+            {
+              if (consume ("{"))
+              {
+                global->init_val = init_commas(global->type->ptr_to); // assume global->type->ty == ARRAY
+                if(global->type->ty == ARRAY && global->type->array_size == -1)
+                {
+                  global->type->array_size = count_init_val(global->init_val);
+                }
+                expect ("}");
+              }
+              else
+              {
+                global->init_val = init_commas(global->type);
+                if(global->type->ty == ARRAY && global->type->array_size == -1)
+                {
+                  if(global->init_val->init_type == INIT_STR)
+                  {
+                    global->type->array_size = strlen(find_strlit_from_id(global->init_val->val)->str) + 1;
+                  }
+                }
+              }
+            }
+            else
+            {
+              global->init_val = NULL;
+            }
+            expect(";");
 
             global->next = globals;
             globals = global;
-            expect(";");
           }
         }
       else
@@ -1096,7 +1214,7 @@ Node *
 array ()
 {
   Node *lhs = primary();
-  if (consume("["))
+  while (consume("["))
   {
     Node *rhs = expr ();
     expect ("]");
@@ -1104,7 +1222,7 @@ array ()
     infer_type(add_node);
     Node *deref_node = new_node(ND_DEREF, add_node, NULL);
     infer_type(deref_node);
-    return deref_node;
+    lhs = deref_node;
   }
   return lhs;
 }

@@ -421,7 +421,38 @@ parse_and_code_gen (char *src)
   {
       printf (".globl %s\n", global->name);
       printf ("%s:\n", global->name);
-      printf ("  .zero %d\n", type_size(global->type) );
+      if(global->init_val)
+      {
+        for(IVar *init_val = global->init_val; init_val; init_val = init_val->next)
+        {
+          switch(init_val->init_type)
+          {
+            case INIT_CHAR:
+              printf ("  .byte %d\n", init_val->val );
+              break;
+
+            case INIT_INT:
+              printf ("  .long %d\n", init_val->val );
+              break;
+
+            case INIT_STR:
+              printf ("  .string \"%s\"\n", find_strlit_from_id(init_val->val)->str );
+              break;
+
+            case INIT_STRPTR:
+              printf ("  .quad .LC%d\n", init_val->val );
+              break;
+
+            default:
+              error("まだサポートされていないグローバル変数の初期化です。");
+              break;
+          }
+        }
+      }
+      else
+      {
+        printf ("  .zero %d\n", type_size(global->type) );
+      }
   }
 
   // 文字列リテラルの確保
