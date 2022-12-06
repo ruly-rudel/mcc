@@ -184,6 +184,13 @@ gen (Node * node)
           printf ("  push rax\n");
         }
       return;
+    case ND_DEFIDENT:
+      if(node->rhs == NULL)
+      {
+        printf ("  push 0\n");	// dummy result for pop in block
+        return;
+      }
+      // fall thru
     case ND_ASSIGN:
       gen_lval (node->lhs);
       gen (node->rhs);
@@ -213,9 +220,7 @@ gen (Node * node)
       printf ("  mov rax, [rax]\n");
       printf ("  push rax\n");
       return;
-    case ND_DEFIDENT:
-      printf ("  push 0\n");	// dummy result for pop in block
-      return;
+
     }
 
   gen (node->lhs);
