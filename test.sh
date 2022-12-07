@@ -178,6 +178,9 @@ assert 104 'char* a[] = {"abc", "def", "ghi"}; int main() { return a[2][1]; }'
 assert 105 'char* a[] = {"abc", "def", "ghi"}; int main() { return a[2][2]; }'
 assert 24 'char* a[] = {"abc", "def", "ghi"}; int main() { return sizeof(a); }'
 assert 8 'char* a[] = {"abc", "def", "ghi"}; int main() { return sizeof(a[0]); }'
+assert 3  'int main() { int a = 1 + 2; return a; }'
+assert 97  'int main() { char *a = "abc"; return a[0]; }'
+assert 99  'int main() { char *a = "abc"; return a[2]; }'
 
 
 echo OK

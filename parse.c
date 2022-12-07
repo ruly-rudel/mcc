@@ -762,6 +762,8 @@ Node *
 stmt ()
 {
   Node *node;
+  Token *tok;
+  LVar *lvar;
   if (consume ("{"))
     {
       node = block ();
@@ -825,10 +827,21 @@ stmt ()
         }
       node = new_node_4 (ND_FOR, initial_node, condition_node, inclemental_node, body_node);
     }
-  else if (argdef ())
+  else if (tok = argdef ())
     {
+      Node *init_val = NULL;
+      if(consume ("="))
+      {
+        init_val = expr();
+      }
+
       expect (";");
-      node = new_node (ND_DEFIDENT, NULL, NULL);
+      node = calloc (1, sizeof (Node));
+      lvar = find_lvar (tok);
+      node->kind = ND_LVAR;
+      node->offset = lvar->offset;
+      node->type = lvar->type;
+      node = new_node (ND_DEFIDENT, node, init_val);
     }
   else
     {
