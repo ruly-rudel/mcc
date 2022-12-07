@@ -181,6 +181,14 @@ assert 8 'char* a[] = {"abc", "def", "ghi"}; int main() { return sizeof(a[0]); }
 assert 3  'int main() { int a = 1 + 2; return a; }'
 assert 97  'int main() { char *a = "abc"; return a[0]; }'
 assert 99  'int main() { char *a = "abc"; return a[2]; }'
+assert 1  'int main() { if(1 && 2) return 1; else return 0; }'
+assert 0  'int main() { if(0 && 0) return 1; else return 0; }'
+assert 0  'int main() { if(0 && 1) return 1; else return 0; }'
+assert 0  'int main() { if(1 && 0) return 1; else return 0; }'
+assert 1  'int main() { if(1 && 2 && 3) return 1; else return 0; }'
+assert 1  'int main() { if(1 && 2 && 3 && 4) return 1; else return 0; }'
+assert 1  'int main() { int a = 1; int b = 2; int c = 1; if(a != b && b != c && c == a) return 1; else return 0; }'
+assert 1  'int main() { if(1 || 2 || 3 || 4) return 1; else return 0; }'
 
 
 echo OK

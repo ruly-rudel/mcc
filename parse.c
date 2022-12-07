@@ -313,6 +313,8 @@ is_keyword (const char *s1, const char *s2)
 
 
 char *tokens[] = {
+  "&&",
+  "||",
   "==",
   "!=",
   "<=",
@@ -527,6 +529,8 @@ void program ();
 Node *block ();
 Node *stmt ();
 Node *expr ();
+Node *logical_or ();
+Node *logical_and ();
 Node *assign ();
 Node *equality ();
 Node *relational ();
@@ -861,12 +865,46 @@ expr ()
 Node *
 assign ()
 {
-  Node *node = equality ();
+  Node *node = logical_or ();
   if (consume ("="))
     {
       node = new_node (ND_ASSIGN, node, assign ());
     }
   return node;
+}
+
+Node *
+logical_or ()
+{
+  Node *node = logical_and ();
+  for(;;)
+  {
+    if(consume ("||"))
+    {
+      node = new_node (ND_LOR, node, logical_and ());
+    }
+    else
+    {
+      return node;
+    }
+  }
+}
+
+Node *
+logical_and ()
+{
+  Node *node = equality ();
+  for(;;)
+  {
+    if(consume ("&&"))
+    {
+      node = new_node (ND_LAND, node, equality ());
+    }
+    else
+    {
+      return node;
+    }
+  }
 }
 
 Node *

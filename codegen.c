@@ -70,6 +70,23 @@ gen (Node * node)
       printf ("  ret\n");
       return;
 
+    case ND_LAND:
+      id = gen_label_id ();
+      gen (node->lhs);
+      printf ("  pop rax\n");
+      printf ("  cmp rax, 0\n");
+      printf ("  je .Lfalse%06d\n", id);
+      gen (node->rhs);
+      printf ("  pop rax\n");
+      printf ("  cmp rax, 0\n");
+      printf ("  je .Lfalse%06d\n", id);
+      printf ("  push 1\n");
+      printf ("  jmp .Lend%06d\n", id);
+      printf (".Lfalse%06d:\n", id);
+      printf ("  push 0\n");
+      printf (".Lend%06d:\n", id);
+      return ;
+
     case ND_IF:
       id = gen_label_id ();
       gen (node->lhs);
@@ -340,6 +357,9 @@ gen (Node * node)
       printf ("  cmp rax, rdi\n");
       printf ("  setle al\n");
       printf ("  movzb rax, al\n");
+      break;
+    case ND_LOR:
+      printf ("  or rax, rdi\n");
       break;
     }
 
