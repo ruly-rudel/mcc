@@ -21,6 +21,9 @@ LVar *locals = NULL;
 StrLit *strlits = NULL;
 int strlit_num = 0;
 
+// structs
+Struct *structs = NULL;
+
 bool at_eof ();
 
 // エラーの起きた場所を報告するための関数
@@ -165,6 +168,18 @@ find_strlit_from_id(int id)
   return NULL;
 }
 
+Struct *
+find_struct( char *struct_name, int struct_name_len )
+{
+  for (Struct *stru = structs; stru; stru = stru->next)
+  {
+    if(stru->len == struct_name_len && !memcmp(stru->name, struct_name, struct_name_len))
+    {
+      return stru;
+    }
+  }
+  return NULL;
+}
 
 
 bool
@@ -346,6 +361,7 @@ char *keywords[] = {
   "int",
   "char",
   "sizeof",
+  "struct",
 };
 
 // 入力文字列pをトークナイズしてそれを返す
@@ -617,6 +633,7 @@ void
 program ()
 {
   int i;
+  Token *tok;
   for (i = 0; !at_eof (); i++)
     {
       Type *type_root = calloc (1, sizeof (Type));
@@ -627,6 +644,20 @@ program ()
       else if(consume ("char"))
       {
         type_root->ty = CHAR;
+      }
+      else if(consume ("struct"))
+      {
+        type_root->ty = STRUCT;
+        tok = consume_ident();
+        if(tok)
+        {
+          type_root->struct_name = tok->str;
+          type_root->struct_name_len = tok->len;
+        }
+        else
+        {
+          error_at(token->str, "struct名が必要です。");
+        }
       }
       else
       {
@@ -640,7 +671,7 @@ program ()
           type->ptr_to = type_root;
           type_root = type;
         }
-      Token *tok = consume_ident ();
+      tok = consume_ident ();
       if (tok)
         {
           if(consume ("("))  // function definition
@@ -732,9 +763,83 @@ program ()
             globals = global;
           }
         }
-      else
+      else  // struct
         {
-          error_at (token->str, "関数名または変数名が必要です");
+          if(type_root->ty == STRUCT)
+          {
+            expect ("{");
+            Struct *stru = calloc(1, sizeof (Struct));
+            stru->name = type_root->struct_name;
+            stru->len  = type_root->struct_name_len;
+
+            while(!consume ("}"))
+            {
+              StructMember *stru_mem = calloc(1, sizeof (StructMember));
+              type_root = calloc (1, sizeof (Type));
+              if(consume ("int"))
+              {
+                type_root->ty = INT;
+              }
+              else if(consume ("char"))
+              {
+                type_root->ty = CHAR;
+              }
+              else if(consume ("struct"))
+              {
+                type_root->ty = STRUCT;
+                tok = consume_ident();
+                if(tok)
+                {
+                  type_root->struct_name = tok->str;
+                  type_root->struct_name_len = tok->len;
+                }
+                else
+                {
+                  error_at(token->str, "struct名が必要です。");
+                }
+              }
+              else
+              {
+                error_at(token->str, "型名が必要です。");
+              }
+
+              while (consume ("*"))
+                {
+                  Type *type = calloc (1, sizeof (Type));
+                  type->ty = PTR;
+                  type->ptr_to = type_root;
+                  type_root = type;
+                }
+
+              tok = consume_ident ();
+              if (tok)
+              {
+                stru_mem = calloc(1, sizeof (StructMember));
+                stru_mem->name = tok->str;
+                stru_mem->len  = tok->len;
+                stru_mem->type = type_root;
+                stru_mem->offset = stru->member ? stru->member->offset + type_size(stru->member->type) : 0;
+
+                stru_mem->next = stru->member;
+                stru->member = stru_mem;
+              }
+              else
+              {
+                error_at (token->str, "メンバ名が必要です");
+              }
+
+              expect(";");
+            }
+
+            stru->size = stru->member ? stru->member->offset + type_size(stru->member->type) : 0;
+            stru->next = structs;
+            structs = stru;
+            expect (";");
+          }
+          else
+          {
+            error_at (token->str, "関数名または変数名が必要です");
+          }
         }
     }
 }
@@ -1189,6 +1294,11 @@ type_size (Type * t)
           return 8 * t->array_size;
         }
     }
+  else if(t->ty == STRUCT)
+  {
+    Struct *stru = find_struct( t->struct_name, t->struct_name_len );
+    return stru->size;
+  }
   else if(t->ty == CHAR)
     {
       return 1;
@@ -1207,6 +1317,7 @@ Token *
 argdef ()
 {
   Type *type_root = NULL;
+  Token *tok = NULL;
   if (consume ("int"))
     {
       type_root = calloc (1, sizeof (Type));
@@ -1216,6 +1327,21 @@ argdef ()
     {
       type_root = calloc (1, sizeof (Type));
       type_root->ty = CHAR;
+    }
+  else if(consume ("struct"))
+    {
+      type_root = calloc (1, sizeof (Type));
+      type_root->ty = STRUCT;
+      tok = consume_ident();
+      if(tok)
+      {
+        type_root->struct_name = tok->str;
+        type_root->struct_name_len = tok->len;
+      }
+      else
+      {
+        error_at(token->str, "struct名が必要です。");
+      }
     }
   else
     {
@@ -1229,7 +1355,8 @@ argdef ()
       type->ptr_to = type_root;
       type_root = type;
     }
-  Token *tok = consume_ident ();
+
+  tok = consume_ident ();
 
   if (tok)
     {
