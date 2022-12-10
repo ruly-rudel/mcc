@@ -55,6 +55,8 @@ typedef enum
   ND_ASSIGN,			// =
   ND_LVAR,			// local variable
   ND_GVAR,    // global variable
+  ND_LAND,    // &&
+  ND_LOR,     // ||
   ND_EQL,			// ==
   ND_NEQ,			// !=
   ND_LTE,			// <=
