@@ -146,7 +146,7 @@ gen (Node * node)
 
     case ND_CALL:
       // prepare arguments
-      comma = node->lhs;
+      comma = node->rhs;
       for (arg_num = 0; arg_num < 6; arg_num++)
         {
           if (comma && comma->lhs)
@@ -166,7 +166,7 @@ gen (Node * node)
       printf ("  pop rsi\n");
       printf ("  pop rdi\n");
       printf ("  mov al, 0\n");
-      printf ("  call %s\n", node->identity);
+      printf ("  call %s\n", node->lhs->identity);
       printf ("  push rax\n");
       return;
 
