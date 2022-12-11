@@ -80,6 +80,7 @@ typedef enum
   ND_ADDR,			// &(address)
   ND_DEREF,			// *(dereference)
   ND_DEFIDENT,			// define identity
+  ND_DOT,       // . operetor
   ND_STR, 			// string literal
 } NodeKind;
 

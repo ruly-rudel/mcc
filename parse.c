@@ -334,6 +334,7 @@ char *tokens[] = {
   "!=",
   "<=",
   ">=",
+  "->",
   "+",
   "-",
   "*",
@@ -350,6 +351,7 @@ char *tokens[] = {
   "&",
   "[",
   "]",
+  ".",
 };
 
 char *keywords[] = {
@@ -1235,6 +1237,21 @@ argdef ()
   return tok;
 }
 
+
+StructMember *
+find_struct_member(StructMember *member, char *str, int len)
+{
+  for(; member; member = member->next)
+  {
+    if(member->len == len && !memcmp(member->name, str, len))
+    {
+      return member;
+    }
+  }
+
+  return NULL;
+}
+
 Node *
 postfix ()
 {
@@ -1257,6 +1274,51 @@ postfix ()
       lhs = new_node (ND_CALL, lhs, look_at (")") ? NULL : commas ());
       lhs->type = ty;
       expect (")");
+    }
+    else if (consume ("."))
+    {
+      if (lhs->type->ty == STRUCT)
+      {
+        Struct *stru = find_struct(lhs->type->struct_name, lhs->type->struct_name_len);
+        Token *tok = consume_ident();
+        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        if(member)
+        {
+          lhs = new_node (ND_DOT, lhs, new_node_num(member->offset));
+          lhs->type = member->type;
+        }
+        else
+        {
+          error_at(tok->str, "構造体のメンバに存在しません");
+        }
+      }
+      else
+      {
+        error_at(token->str, ".オペレータの対象は構造体でなくてはいけません");
+      }
+    }
+    else if (consume ("->"))
+    {
+      if (lhs->type->ty == PTR && lhs->type->ptr_to->ty == STRUCT)
+      {
+        Struct *stru = find_struct(lhs->type->ptr_to->struct_name, lhs->type->ptr_to->struct_name_len);
+        Token *tok = consume_ident();
+        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        if(member)
+        {
+          lhs = new_node (ND_DEREF, lhs, NULL);
+          lhs = new_node (ND_DOT, lhs, new_node_num(member->offset));
+          lhs->type = member->type;
+        }
+        else
+        {
+          error_at(tok->str, "構造体のメンバに存在しません");
+        }
+      }
+      else
+      {
+        error_at(token->str, "->オペレータの対象は構造体へのポインタでなくてはいけません");
+      }
     }
     else
     {

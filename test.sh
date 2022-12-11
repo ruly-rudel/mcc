@@ -190,6 +190,11 @@ assert 1  'int main() { if(1 && 2 && 3 && 4) return 1; else return 0; }'
 assert 1  'int main() { int a = 1; int b = 2; int c = 1; if(a != b && b != c && c == a) return 1; else return 0; }'
 assert 1  'int main() { if(1 || 2 || 3 || 4) return 1; else return 0; }'
 assert 12 'struct list { struct list *next; int val; }; int main() { struct list lst; return sizeof (lst) ; }'
+assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.val = 1; return lst.val; }'
+assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.next = &lst; lst.val = 1; return lst.val; }'
+assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.next = &lst; lst.val = 1; return (*lst.next).val; }'
+assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.val = 1; lst.next = &lst; return lst.next->val; }'
+assert_file 10 tv/tv0001.c
 
 
 echo OK
