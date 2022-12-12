@@ -9,7 +9,7 @@ int
 count_lvar ()
 {
   int r = 0;
-  LVar *p = locals;
+  struct LVar *p = locals;
   while (p)
     {
       r++;
@@ -24,10 +24,10 @@ gen_label_id ()
   return gen_label_var++;
 }
 
-void gen (Node * node);
+void gen (struct Node * node);
 
 void
-gen_lval (Node * node)
+gen_lval (struct Node * node)
 {
   if (node->kind == ND_LVAR)
     {
@@ -61,17 +61,17 @@ gen_lval (Node * node)
 
 // stack machine
 void
-gen (Node * node)
+gen (struct Node * node)
 {
   bool has_lhs = node->lhs != NULL;
   bool has_rhs = node->rhs != NULL;
 
-  Type *lhs_type = has_lhs ? node->lhs->type : NULL;
-  Type *rhs_type = has_rhs ? node->rhs->type : NULL;
+  struct Type *lhs_type = has_lhs ? node->lhs->type : NULL;
+  struct Type *rhs_type = has_rhs ? node->rhs->type : NULL;
 
   int id;
   int arg_num;
-  Node *comma;
+  struct Node *comma;
 
   switch (node->kind)
     {
@@ -404,7 +404,7 @@ gen (Node * node)
 }
 
 void
-push_args (LVar* lvar, int argpos)
+push_args (struct LVar* lvar, int argpos)
 {
   if(lvar)
   {
@@ -479,13 +479,13 @@ parse_and_code_gen (char *src)
   printf ("\t.data\n");
 
   // グローバル変数の確保
-  for (GVar * global = globals; global; global = global->next)
+  for (struct GVar * global = globals; global; global = global->next)
   {
       printf (".globl %s\n", global->name);
       printf ("%s:\n", global->name);
       if(global->init_val)
       {
-        for(IVar *init_val = global->init_val; init_val; init_val = init_val->next)
+        for(struct IVar *init_val = global->init_val; init_val; init_val = init_val->next)
         {
           switch(init_val->init_type)
           {
@@ -518,7 +518,7 @@ parse_and_code_gen (char *src)
   }
 
   // 文字列リテラルの確保
-  for (StrLit *strlit = strlits; strlit; strlit = strlit->next)
+  for (struct StrLit *strlit = strlits; strlit; strlit = strlit->next)
   {
       printf (".LC%d:\n", strlit->id);
       printf ("  .string \"%s\"\n", strlit->str );
@@ -526,7 +526,7 @@ parse_and_code_gen (char *src)
 
   printf ("\t.text\n");
   // 先頭の式から順にコード生成
-  for (Func * func = funcs; func; func = func->next)
+  for (struct Func * func = funcs; func; func = func->next)
     {
       if(func->ast_root)
       {

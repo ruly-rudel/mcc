@@ -6,25 +6,25 @@ char *user_input;
 char *filename;
 
 // 現在着目しているトークン
-Token *token;
+struct Token *token;
 
 // グローバル関数
-Func *funcs = NULL;
+struct Func *funcs = NULL;
 
 // グローバル変数
-GVar *globals = NULL;
+struct GVar *globals = NULL;
 
 // ローカル変数
-LVar *locals = NULL;
+struct LVar *locals = NULL;
 
 // 文字列リテラル
-StrLit *strlits = NULL;
+struct StrLit *strlits = NULL;
 int strlit_num = 0;
 
 // structs
-Struct *structs = NULL;
+struct Struct *structs = NULL;
 
-bool at_eof ();
+int at_eof ();
 
 // エラーの起きた場所を報告するための関数
 // 下のようなフォーマットでエラーメッセージを表示する
@@ -99,10 +99,10 @@ warn_at (char *loc, char *fmt, ...)
 
 
 // 変数を名前で検索する。見つからなかった場合はNULLを返す。
-LVar *
-find_lvar (Token * tok)
+struct LVar *
+find_lvar (struct Token * tok)
 {
-  for (LVar * var = locals; var; var = var->next)
+  for (struct LVar * var = locals; var; var = var->next)
     {
       if (var->len == tok->len && !memcmp (tok->str, var->name, var->len))
         {
@@ -112,10 +112,10 @@ find_lvar (Token * tok)
   return NULL;
 }
 
-Func *
-find_func (Token * tok)
+struct Func *
+find_func (struct Token * tok)
 {
-  for (Func * func = funcs; func; func = func->next)
+  for (struct Func * func = funcs; func; func = func->next)
     {
       if (strlen (func->name) == tok->len
           && !memcmp (tok->str, func->name, tok->len))
@@ -126,10 +126,10 @@ find_func (Token * tok)
   return NULL;
 }
 
-Func *
+struct Func *
 find_func_name (char *name)
 {
-  for (Func * func = funcs; func; func = func->next)
+  for (struct Func * func = funcs; func; func = func->next)
     {
       if (strlen (func->name) == strlen (name)
           && !memcmp (name, func->name, strlen (name)))
@@ -141,10 +141,10 @@ find_func_name (char *name)
 }
 
 
-GVar *
-find_global (Token * tok)
+struct GVar *
+find_global (struct Token * tok)
 {
-  for (GVar * gvar = globals; gvar; gvar = gvar->next)
+  for (struct GVar * gvar = globals; gvar; gvar = gvar->next)
     {
       if (gvar->len == tok->len
           && !memcmp (tok->str, gvar->name, tok->len))
@@ -155,10 +155,10 @@ find_global (Token * tok)
   return NULL;
 }
 
-StrLit *
+struct StrLit *
 find_strlit_from_id(int id)
 {
-  for (StrLit *strlit = strlits; strlit; strlit = strlit->next)
+  for (struct StrLit *strlit = strlits; strlit; strlit = strlit->next)
   {
     if(strlit->id == id)
     {
@@ -168,10 +168,10 @@ find_strlit_from_id(int id)
   return NULL;
 }
 
-Struct *
+struct Struct *
 find_struct( char *struct_name, int struct_name_len )
 {
-  for (Struct *stru = structs; stru; stru = stru->next)
+  for (struct Struct *stru = structs; stru; stru = stru->next)
   {
     if(stru->len == struct_name_len && !memcmp(stru->name, struct_name, struct_name_len))
     {
@@ -182,7 +182,7 @@ find_struct( char *struct_name, int struct_name_len )
 }
 
 
-bool
+int
 not_token_str (char *op)
 {
   return strlen (op) != token->len || memcmp (token->str, op, token->len);
@@ -190,20 +190,20 @@ not_token_str (char *op)
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
 // 真を返す。それ以外の場合には偽を返す。
-bool
+int
 look_at (char *op)
 {
   if (token->kind != TK_RESERVED || not_token_str (op))
     {
-      return false;
+      return 0;
     }
-  return true;
+  return 1;
 }
 
-bool
+int
 consume (char *op)
 {
-  bool ret = look_at (op);
+  int ret = look_at (op);
   if (ret)
     {
       token = token->next;
@@ -211,12 +211,12 @@ consume (char *op)
   return ret;
 }
 
-Token *
+struct Token *
 consume_ident ()
 {
   if (token->kind == TK_IDENT)
     {
-      Token *token_ret = token;
+      struct Token *token_ret = token;
       token = token->next;
       return token_ret;
     }
@@ -226,12 +226,12 @@ consume_ident ()
     }
 }
 
-Token *
+struct Token *
 consume_string ()
 {
   if (token->kind == TK_STRING)
     {
-      Token *token_ret = token;
+      struct Token *token_ret = token;
       token = token->next;
       return token_ret;
     }
@@ -267,17 +267,17 @@ expect_number ()
   return val;
 }
 
-bool
+int
 at_eof ()
 {
   return token->kind == TK_EOF;
 }
 
 // 新しいトークンを作成してcurに繋げる
-Token *
-new_token (TokenKind kind, Token * cur, char *str, int len)
+struct Token *
+new_token (enum TokenKind kind, struct Token * cur, char *str, int len)
 {
-  Token *tok = calloc (1, sizeof (Token));
+  struct Token *tok = calloc (1, sizeof (struct Token));
   tok->kind = kind;
   tok->str = str;
   tok->len = len;
@@ -291,22 +291,22 @@ is_alnum (char c)
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
 }
 
-bool
-not_null (const char *p, int n)
+int
+not_null (char *p, int n)
 {
   while (n--)
     {
       if (*p++ == '\0')
         {
-          return false;
+          return 0;
         }
     }
-  return true;
+  return 1;
 }
 
 /* s1: nullable string, s2: const string */
 int
-s_memcmp (const void *s1, const void *s2, size_t n)
+s_memcmp (void *s1, void *s2, size_t n)
 {
   if (not_null (s1, n))
     {
@@ -319,8 +319,8 @@ s_memcmp (const void *s1, const void *s2, size_t n)
 }
 
 /* s1: nullable string, s2: const string */
-bool
-is_keyword (const char *s1, const char *s2)
+int
+is_keyword (char *s1, char *s2)
 {
   int n = strlen (s2);
   return !s_memcmp (s1, s2, n) && !is_alnum (s1[n]);
@@ -367,12 +367,12 @@ char *keywords[] = {
 };
 
 // 入力文字列pをトークナイズしてそれを返す
-Token *
+struct Token *
 tokenize (char *p)
 {
-  Token head;
+  struct Token head;
   head.next = NULL;
-  Token *cur = &head;
+  struct Token *cur = &head;
 
   while (*p)
     {
@@ -400,7 +400,7 @@ tokenize (char *p)
         continue;
       }
 
-      bool has_token = false;
+      int has_token = 0;
       for (int i = 0; i < sizeof (tokens) / sizeof (tokens[0]); i++)
         {
           int len = strlen (tokens[i]);
@@ -408,11 +408,11 @@ tokenize (char *p)
             {
               cur = new_token (TK_RESERVED, cur, p, len);
               p += len;
-              has_token = true;
+              has_token = 1;
             }
         }
 
-      bool has_keyword = false;
+      int has_keyword = 0;
       for (int i = 0; i < sizeof (keywords) / sizeof (keywords[0]); i++)
         {
           if (is_keyword (p, keywords[i]))
@@ -420,7 +420,7 @@ tokenize (char *p)
               int len = strlen (keywords[i]);
               cur = new_token (TK_RESERVED, cur, p, len);
               p += len;
-              has_keyword = true;
+              has_keyword = 1;
               break;
             }
         }
@@ -495,10 +495,10 @@ tokenize (char *p)
   return head.next;
 }
 
-Node *
-new_node (NodeKind kind, Node * lhs, Node * rhs)
+struct Node *
+new_node (enum NodeKind kind, struct Node * lhs, struct Node * rhs)
 {
-  Node *node = calloc (1, sizeof (Node));
+  struct Node *node = calloc (1, sizeof (struct Node));
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
@@ -507,10 +507,10 @@ new_node (NodeKind kind, Node * lhs, Node * rhs)
   return node;
 }
 
-Node *
-new_node_3 (NodeKind kind, Node * lhs, Node * rhs, Node * els)
+struct Node *
+new_node_3 (enum NodeKind kind, struct Node * lhs, struct Node * rhs, struct Node * els)
 {
-  Node *node = calloc (1, sizeof (Node));
+  struct Node *node = calloc (1, sizeof (struct Node));
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
@@ -519,10 +519,10 @@ new_node_3 (NodeKind kind, Node * lhs, Node * rhs, Node * els)
   return node;
 }
 
-Node *
-new_node_4 (NodeKind kind, Node * lhs, Node * rhs, Node * els, Node * body)
+struct Node *
+new_node_4 (enum NodeKind kind, struct Node * lhs, struct Node * rhs, struct Node * els, struct Node * body)
 {
-  Node *node = calloc (1, sizeof (Node));
+  struct Node *node = calloc (1, sizeof (struct Node));
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
@@ -531,52 +531,52 @@ new_node_4 (NodeKind kind, Node * lhs, Node * rhs, Node * els, Node * body)
   return node;
 }
 
-Node *
+struct Node *
 new_node_num (int val)
 {
-  Node *node = calloc (1, sizeof (Node));
+  struct Node *node = calloc (1, sizeof (struct Node));
   node->kind = ND_NUM;
   node->val = val;
-  node->type = calloc (1, sizeof (Type));
+  node->type = calloc (1, sizeof (struct Type));
   node->type->ty = INT;
   return node;
 }
 
 
 void program ();
-Node *block ();
-Node *stmt ();
-Node *expr ();
-Node *logical_or ();
-Node *logical_and ();
-Node *assign ();
-Node *equality ();
-Node *relational ();
-Node *add ();
-Type *infer_type (Node * node);
-Node *mul ();
-Node *commas ();
+struct Node *block ();
+struct Node *stmt ();
+struct Node *expr ();
+struct Node *logical_or ();
+struct Node *logical_and ();
+struct Node *assign ();
+struct Node *equality ();
+struct Node *relational ();
+struct Node *add ();
+struct Type *infer_type (struct Node * node);
+struct Node *mul ();
+struct Node *commas ();
 int argdefs ();
-Token *argdef ();
-Node *postfix ();
-Node *primary ();
-Node *cast ();
-Node *unary ();
+struct Token *argdef ();
+struct Node *postfix ();
+struct Node *primary ();
+struct Node *cast ();
+struct Node *unary ();
 
 
-IVar *
-init_commas (Type* ty)
+struct IVar *
+init_commas (struct Type* ty)
 {
-  IVar *init_val = NULL;
-  init_val = calloc (1, sizeof (IVar));
+  struct IVar *init_val = NULL;
+  init_val = calloc (1, sizeof (struct IVar));
 
   if (consume ("\""))
   {
-    Token *tok = consume_string();
+    struct Token *tok = consume_string();
     init_val->init_type = IS_PTR_CHR(ty) ? INIT_STRPTR : INIT_STR;
     init_val->val = strlit_num;
 
-    StrLit *strlit = calloc(1, sizeof(StrLit));
+    struct StrLit *strlit = calloc(1, sizeof(struct StrLit));
     strlit->id = strlit_num;
     strlit->str = calloc(tok->len + 1, 1);
     memcpy (strlit->str, tok->str, tok->len);
@@ -615,7 +615,7 @@ init_commas (Type* ty)
 }
 
 int
-count_init_val(IVar *init_val)
+count_init_val(struct IVar *init_val)
 {
   if(init_val)
   {
@@ -636,10 +636,10 @@ void
 program ()
 {
   int i;
-  Token *tok;
+  struct Token *tok;
   for (i = 0; !at_eof (); i++)
     {
-      Type *type_root = calloc (1, sizeof (Type));
+      struct Type *type_root = calloc (1, sizeof (struct Type));
       if(consume ("int"))
       {
         type_root->ty = INT;
@@ -669,7 +669,7 @@ program ()
 
       while (consume ("*"))
         {
-          Type *type = calloc (1, sizeof (Type));
+          struct Type *type = calloc (1, sizeof (struct Type));
           type->ty = PTR;
           type->ptr_to = type_root;
           type_root = type;
@@ -679,7 +679,7 @@ program ()
         {
           if(consume ("("))  // function definition
           {
-            Func *func = calloc (1, sizeof (Func));
+            struct Func *func = calloc (1, sizeof (struct Func));
             func->name = calloc (1, tok->len + 1);
             memcpy (func->name, tok->str, tok->len);
             func->name[tok->len] = '\0';
@@ -706,7 +706,7 @@ program ()
           }
           else  // global variable
           {
-            GVar *global = calloc (1, sizeof (GVar));
+            struct GVar *global = calloc (1, sizeof (struct GVar));
             global->name = calloc (1, tok->len + 1);
             memcpy (global->name, tok->str, tok->len);
             global->name[tok->len] = '\0';
@@ -725,7 +725,7 @@ program ()
                 expect ("]");
               }
 
-              Type *type = calloc (1, sizeof (Type));
+              struct Type *type = calloc (1, sizeof (struct Type));
               type->ty = ARRAY;
               type->ptr_to = type_root;
               type->array_size = array_size;
@@ -771,14 +771,14 @@ program ()
           if(type_root->ty == STRUCT)
           {
             expect ("{");
-            Struct *stru = calloc(1, sizeof (Struct));
+            struct Struct *stru = calloc(1, sizeof (struct Struct));
             stru->name = type_root->struct_name;
             stru->len  = type_root->struct_name_len;
 
             while(!consume ("}"))
             {
-              StructMember *stru_mem = calloc(1, sizeof (StructMember));
-              type_root = calloc (1, sizeof (Type));
+              struct StructMember *stru_mem = calloc(1, sizeof (struct StructMember));
+              type_root = calloc (1, sizeof (struct Type));
               if(consume ("int"))
               {
                 type_root->ty = INT;
@@ -808,7 +808,7 @@ program ()
 
               while (consume ("*"))
                 {
-                  Type *type = calloc (1, sizeof (Type));
+                  struct Type *type = calloc (1, sizeof (struct Type));
                   type->ty = PTR;
                   type->ptr_to = type_root;
                   type_root = type;
@@ -817,7 +817,7 @@ program ()
               tok = consume_ident ();
               if (tok)
               {
-                stru_mem = calloc(1, sizeof (StructMember));
+                stru_mem = calloc(1, sizeof (struct StructMember));
                 stru_mem->name = tok->str;
                 stru_mem->len  = tok->len;
                 stru_mem->type = type_root;
@@ -847,11 +847,11 @@ program ()
     }
 }
 
-Node *
+struct Node *
 block ()
 {
-  Node *node = NULL;
-  Node *block_root = NULL;
+  struct Node *node = NULL;
+  struct Node *block_root = NULL;
   if (!look_at ("}"))
     {
       block_root = new_node (ND_BLOCK, stmt (), NULL);
@@ -870,12 +870,12 @@ block ()
   return block_root;
 }
 
-Node *
+struct Node *
 stmt ()
 {
-  Node *node;
-  Token *tok;
-  LVar *lvar;
+  struct Node *node;
+  struct Token *tok;
+  struct LVar *lvar;
   if (consume ("{"))
     {
       node = block ();
@@ -888,10 +888,10 @@ stmt ()
   else if (consume ("if"))
     {
       expect ("(");
-      Node *if_node = expr ();
+      struct Node *if_node = expr ();
       expect (")");
-      Node *then_node = stmt ();
-      Node *else_node = NULL;
+      struct Node *then_node = stmt ();
+      struct Node *else_node = NULL;
       if (consume ("else"))
         {
           else_node = stmt ();
@@ -901,17 +901,17 @@ stmt ()
   else if (consume ("while"))
     {
       expect ("(");
-      Node *condition_node = expr ();
+      struct Node *condition_node = expr ();
       expect (")");
       node = new_node (ND_WHILE, condition_node, stmt ());
     }
   else if (consume ("for"))
     {
       expect ("(");
-      Node *initial_node = NULL;
-      Node *condition_node = NULL;
-      Node *inclemental_node = NULL;
-      Node *body_node = NULL;
+      struct Node *initial_node = NULL;
+      struct Node *condition_node = NULL;
+      struct Node *inclemental_node = NULL;
+      struct Node *body_node = NULL;
       if (!look_at (";"))
         {
           initial_node = expr ();
@@ -941,14 +941,14 @@ stmt ()
     }
   else if (tok = argdef ())
     {
-      Node *init_val = NULL;
+      struct Node *init_val = NULL;
       if(consume ("="))
       {
         init_val = expr();
       }
 
       expect (";");
-      node = calloc (1, sizeof (Node));
+      node = calloc (1, sizeof (struct Node));
       lvar = find_lvar (tok);
       node->kind = ND_LVAR;
       node->offset = lvar->offset;
@@ -963,17 +963,17 @@ stmt ()
   return node;
 }
 
-Node *
+struct Node *
 expr ()
 {
-  Node *node = assign ();
+  struct Node *node = assign ();
   return node;
 }
 
-Node *
+struct Node *
 assign ()
 {
-  Node *node = logical_or ();
+  struct Node *node = logical_or ();
   if (consume ("="))
     {
       node = new_node (ND_ASSIGN, node, assign ());
@@ -981,10 +981,10 @@ assign ()
   return node;
 }
 
-Node *
+struct Node *
 logical_or ()
 {
-  Node *node = logical_and ();
+  struct Node *node = logical_and ();
   for(;;)
   {
     if(consume ("||"))
@@ -998,10 +998,10 @@ logical_or ()
   }
 }
 
-Node *
+struct Node *
 logical_and ()
 {
-  Node *node = equality ();
+  struct Node *node = equality ();
   for(;;)
   {
     if(consume ("&&"))
@@ -1015,10 +1015,10 @@ logical_and ()
   }
 }
 
-Node *
+struct Node *
 equality ()
 {
-  Node *node = relational ();
+  struct Node *node = relational ();
   for (;;)
     {
       if (consume ("=="))
@@ -1036,10 +1036,10 @@ equality ()
     }
 }
 
-Node *
+struct Node *
 relational ()
 {
-  Node *node = add ();
+  struct Node *node = add ();
   for (;;)
     {
       if (consume ("<="))
@@ -1066,10 +1066,10 @@ relational ()
 }
 
 
-Node *
+struct Node *
 add ()
 {
-  Node *node = mul ();
+  struct Node *node = mul ();
   infer_type (node);
 
   for (;;)
@@ -1093,10 +1093,10 @@ add ()
 
 
 
-Node *
+struct Node *
 mul ()
 {
-  Node *node = cast ();
+  struct Node *node = cast ();
   infer_type (node);
 
   for (;;)
@@ -1118,11 +1118,11 @@ mul ()
     }
 }
 
-Node *
+struct Node *
 commas ()
 {
-  Node *node = NULL;
-  node = calloc (1, sizeof (Node));
+  struct Node *node = NULL;
+  node = calloc (1, sizeof (struct Node));
   node->kind = ND_COMMA;
   node->lhs = expr ();
   if (look_at (","))
@@ -1162,24 +1162,24 @@ argdefs ()
 
 
 
-Token *
+struct Token *
 argdef ()
 {
-  Type *type_root = NULL;
-  Token *tok = NULL;
+  struct Type *type_root = NULL;
+  struct Token *tok = NULL;
   if (consume ("int"))
     {
-      type_root = calloc (1, sizeof (Type));
+      type_root = calloc (1, sizeof (struct Type));
       type_root->ty = INT;
     }
   else if(consume ("char"))
     {
-      type_root = calloc (1, sizeof (Type));
+      type_root = calloc (1, sizeof (struct Type));
       type_root->ty = CHAR;
     }
   else if(consume ("struct"))
     {
-      type_root = calloc (1, sizeof (Type));
+      type_root = calloc (1, sizeof (struct Type));
       type_root->ty = STRUCT;
       tok = consume_ident();
       if(tok)
@@ -1199,7 +1199,7 @@ argdef ()
 
   while (consume ("*"))
     {
-      Type *type = calloc (1, sizeof (Type));
+      struct Type *type = calloc (1, sizeof (struct Type));
       type->ty = PTR;
       type->ptr_to = type_root;
       type_root = type;
@@ -1214,14 +1214,14 @@ argdef ()
           int array_size = expect_number ();
           expect ("]");
 
-          Type *type = calloc (1, sizeof (Type));
+          struct Type *type = calloc (1, sizeof (struct Type));
           type->ty = ARRAY;
           type->ptr_to = type_root;
           type->array_size = array_size;
           type_root = type;
         }
 
-      LVar *lvar = calloc (1, sizeof (LVar));
+      struct LVar *lvar = calloc (1, sizeof (struct LVar));
       lvar->next = locals;
       lvar->name = tok->str;
       lvar->len = tok->len;
@@ -1238,8 +1238,8 @@ argdef ()
 }
 
 
-StructMember *
-find_struct_member(StructMember *member, char *str, int len)
+struct StructMember *
+find_struct_member(struct StructMember *member, char *str, int len)
 {
   for(; member; member = member->next)
   {
@@ -1252,25 +1252,25 @@ find_struct_member(StructMember *member, char *str, int len)
   return NULL;
 }
 
-Node *
+struct Node *
 postfix ()
 {
-  Node *lhs = primary();
+  struct Node *lhs = primary();
   for(;;)
   {
     if (consume("["))
     {
-      Node *rhs = expr ();
+      struct Node *rhs = expr ();
       expect ("]");
-      Node *add_node = new_node(ND_ADD, lhs, rhs);
+      struct Node *add_node = new_node(ND_ADD, lhs, rhs);
       infer_type(add_node);
-      Node *deref_node = new_node(ND_DEREF, add_node, NULL);
+      struct Node *deref_node = new_node(ND_DEREF, add_node, NULL);
       infer_type(deref_node);
       lhs = deref_node;
     }
     else if (consume ("("))
     {
-      Type *ty = lhs->type;
+      struct Type *ty = lhs->type;
       lhs = new_node (ND_CALL, lhs, look_at (")") ? NULL : commas ());
       lhs->type = ty;
       expect (")");
@@ -1279,9 +1279,9 @@ postfix ()
     {
       if (lhs->type->ty == STRUCT)
       {
-        Struct *stru = find_struct(lhs->type->struct_name, lhs->type->struct_name_len);
-        Token *tok = consume_ident();
-        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        struct Struct *stru = find_struct(lhs->type->struct_name, lhs->type->struct_name_len);
+        struct Token *tok = consume_ident();
+        struct StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
         if(member)
         {
           lhs = new_node (ND_DOT, lhs, new_node_num(member->offset));
@@ -1301,9 +1301,9 @@ postfix ()
     {
       if (lhs->type->ty == PTR && lhs->type->ptr_to->ty == STRUCT)
       {
-        Struct *stru = find_struct(lhs->type->ptr_to->struct_name, lhs->type->ptr_to->struct_name_len);
-        Token *tok = consume_ident();
-        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        struct Struct *stru = find_struct(lhs->type->ptr_to->struct_name, lhs->type->ptr_to->struct_name_len);
+        struct Token *tok = consume_ident();
+        struct StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
         if(member)
         {
           lhs = new_node (ND_DEREF, lhs, NULL);
@@ -1327,23 +1327,23 @@ postfix ()
   }
 }
 
-Node *
+struct Node *
 primary ()
 {
   // 次のトークンが"("なら、"(" expr ")"のはず
   if (consume ("("))
     {
-      Node *node = expr ();
+      struct Node *node = expr ();
       expect (")");
       return node;
     }
 
   // or identity?
-  Token *tok = consume_ident ();
+  struct Token *tok = consume_ident ();
   if (tok)
     {
-      Node *node = calloc (1, sizeof (Node));
-      LVar *lvar = find_lvar (tok);
+      struct Node *node = calloc (1, sizeof (struct Node));
+      struct LVar *lvar = find_lvar (tok);
       if (lvar)
         {
           node->kind = ND_LVAR;
@@ -1352,7 +1352,7 @@ primary ()
         }
       else
         {
-          GVar *global = find_global (tok);
+          struct GVar *global = find_global (tok);
           if(global)
           {
             node->kind = ND_GVAR;
@@ -1361,7 +1361,7 @@ primary ()
           }
           else
           {
-            Func *func = find_func (tok);
+            struct Func *func = find_func (tok);
             if (func)
               {
                 node->kind = ND_FUNC;
@@ -1381,12 +1381,12 @@ primary ()
   if (consume ("\""))
     {
       tok = consume_string();
-      Node *node = calloc(1, sizeof (Node));
+      struct Node *node = calloc(1, sizeof (struct Node));
       node->kind = ND_STR;
       node->offset = strlit_num;
       infer_type(node);
 
-      StrLit *strlit = calloc(1, sizeof(StrLit));
+      struct StrLit *strlit = calloc(1, sizeof(struct StrLit));
       strlit->id = strlit_num;
       strlit->str = calloc(tok->len + 1, 1);
       memcpy (strlit->str, tok->str, tok->len);
@@ -1402,7 +1402,7 @@ primary ()
     // or char ?
     if (consume("'"))
     {
-      Node *node = new_node_num (expect_number ());
+      struct Node *node = new_node_num (expect_number ());
       infer_type (node);
       node->type->ty = CHAR;
       expect("'");
@@ -1414,16 +1414,16 @@ primary ()
   return new_node_num (expect_number ());
 }
 
-Node *
+struct Node *
 cast ()
 {
   return unary ();
 }
 
-Node *
+struct Node *
 unary ()
 {
-  Node *node;
+  struct Node *node;
   if (consume ("+"))
     {
       return cast ();
@@ -1448,27 +1448,73 @@ unary ()
     }
   if (consume ("sizeof"))
     {
-      node = unary ();
-      infer_type (node);
-      return new_node_num (type_size(node->type));
+      if(consume ("("))
+      {
+        // typename ?
+        struct Type *type_root = calloc (1, sizeof (struct Type));
+        if(consume ("int"))
+        {
+          type_root->ty = INT;
+        }
+        else if(consume ("char"))
+        {
+          type_root->ty = CHAR;
+        }
+        else if(consume ("struct"))
+        {
+          type_root->ty = STRUCT;
+          struct Token *tok = consume_ident();
+          if(tok)
+          {
+            type_root->struct_name = tok->str;
+            type_root->struct_name_len = tok->len;
+          }
+          else
+          {
+            error_at(token->str, "struct名が必要です。");
+          }
+        }
+        else
+        {
+          node = expr ();
+          infer_type (node);
+          expect (")");
+          return new_node_num (type_size(node->type));
+        }
+
+        while (consume ("*"))
+          {
+            struct Type *type = calloc (1, sizeof (struct Type));
+            type->ty = PTR;
+            type->ptr_to = type_root;
+            type_root = type;
+          }
+
+        expect (")");
+        return new_node_num (type_size (type_root));
+      }
+      else
+      {
+        error_at(token->str, "現状のmccではsizeofにカッコが必要です。");
+      }
     }
   return postfix ();
 }
 
 
-Type *
-infer_type (Node * node)
+struct Type *
+infer_type (struct Node * node)
 {
-  bool has_lhs = node->lhs != NULL;
-  bool has_rhs = node->rhs != NULL;
+  int has_lhs = node->lhs != NULL;
+  int has_rhs = node->rhs != NULL;
 
-  Type *lhs_type = has_lhs ? node->lhs->type : NULL;
-  Type *rhs_type = has_rhs ? node->rhs->type : NULL;
+  struct Type *lhs_type = has_lhs ? node->lhs->type : NULL;
+  struct Type *rhs_type = has_rhs ? node->rhs->type : NULL;
 
   switch (node->kind)
     {
     case ND_ADD:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
@@ -1492,7 +1538,7 @@ infer_type (Node * node)
       break;
 
     case ND_SUB:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       if ((IS_NUM(lhs_type) && IS_NUM(rhs_type)) ||
           (IS_PTR_INT(lhs_type) && IS_PTR_INT(rhs_type)) ||
           (IS_PTR_CHR(lhs_type) && IS_PTR_CHR(rhs_type)) ||
@@ -1511,7 +1557,7 @@ infer_type (Node * node)
       break;
 
     case ND_MUL:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
@@ -1523,7 +1569,7 @@ infer_type (Node * node)
       break;
 
     case ND_DIV:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       if (IS_NUM(lhs_type) && IS_NUM(rhs_type))
         {
           node->type->ty = INT;
@@ -1535,14 +1581,14 @@ infer_type (Node * node)
       break;
 
     case ND_NUM:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       node->type->ty = INT;
       break;
 
     case ND_STR:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       node->type->ty = PTR;
-      node->type->ptr_to = calloc (1, sizeof (Type));
+      node->type->ptr_to = calloc (1, sizeof (struct Type));
       node->type->ptr_to->ty = CHAR;
       break;
 
@@ -1550,7 +1596,7 @@ infer_type (Node * node)
       break;
 
     case ND_ADDR:
-      node->type = calloc (1, sizeof (Type));
+      node->type = calloc (1, sizeof (struct Type));
       node->type->ty = PTR;
       node->type->ptr_to = lhs_type;
       break;
@@ -1576,7 +1622,7 @@ infer_type (Node * node)
 }
 
 int
-type_size (Type * t)
+type_size (struct Type * t)
 {
   if (t->ty == ARRAY)
     {
@@ -1595,7 +1641,7 @@ type_size (Type * t)
     }
   else if(t->ty == STRUCT)
   {
-    Struct *stru = find_struct( t->struct_name, t->struct_name_len );
+    struct Struct *stru = find_struct( t->struct_name, t->struct_name_len );
     return stru->size;
   }
   else if(t->ty == CHAR)

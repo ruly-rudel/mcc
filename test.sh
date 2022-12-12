@@ -195,6 +195,12 @@ assert 1  'struct list { struct list *next; int val; }; int main() { struct list
 assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.next = &lst; lst.val = 1; return (*lst.next).val; }'
 assert 1  'struct list { struct list *next; int val; }; int main() { struct list lst; lst.val = 1; lst.next = &lst; return lst.next->val; }'
 assert_file 21 tv/tv0001.c
+assert 12 'struct list { struct list *next; int val; }; int main() { return sizeof(struct list); }'
+assert 8  'struct list { struct list *next; int val; }; int main() { return sizeof(struct list *); }'
+assert 1  'struct list { struct list *next; int val; }; int main() { return sizeof(char); }'
+assert 4  'struct list { struct list *next; int val; }; int main() { return sizeof(int); }'
+assert 8  'struct list { struct list *next; int val; }; int main() { return sizeof(int *); }'
+assert 8  'struct list { struct list *next; int val; }; int main() { return sizeof(char *); }'
 
 
 echo OK
