@@ -40,6 +40,8 @@ int main()
 	lst = push_front(lst, 2);
 	lst = push_front(lst, 3);
 	lst = push_front(lst, 4);
+	lst = push_back(lst, 5);
+	lst = push_back(lst, 6);
 	for(; lst; lst = lst->next)
 	{
 		sum = sum + lst->val;
