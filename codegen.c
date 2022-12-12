@@ -40,9 +40,22 @@ gen_lval (Node * node)
       printf ("  lea rax, %s[rip]\n", node->identity);
       printf ("  push rax\n");
     }
-  else
+  else if (node->kind == ND_DEREF)
     {
       gen (node->lhs);
+    }
+  else if (node->kind == ND_DOT)
+    {
+      gen_lval (node->lhs);
+      gen(node->rhs);
+      printf ("  pop rdi\n");
+      printf ("  pop rax\n");
+      printf ("  lea rax, [rax + rdi]\n");
+      printf ("  push rax\n");
+    }
+  else
+    {
+      error("lvalを生成できませんでした。");
     }
 }
 
@@ -146,7 +159,7 @@ gen (Node * node)
 
     case ND_CALL:
       // prepare arguments
-      comma = node->lhs;
+      comma = node->rhs;
       for (arg_num = 0; arg_num < 6; arg_num++)
         {
           if (comma && comma->lhs)
@@ -166,7 +179,7 @@ gen (Node * node)
       printf ("  pop rsi\n");
       printf ("  pop rdi\n");
       printf ("  mov al, 0\n");
-      printf ("  call %s\n", node->identity);
+      printf ("  call %s\n", node->lhs->identity);
       printf ("  push rax\n");
       return;
 
@@ -237,7 +250,31 @@ gen (Node * node)
       printf ("  mov rax, [rax]\n");
       printf ("  push rax\n");
       return;
-
+    case ND_DOT:
+      gen_lval (node->lhs);
+      gen(node->rhs);
+      printf ("  pop rdi\t\t\t# ND_DOT\n");
+      printf ("  pop rax\n");
+      printf ("  lea rax, [rax + rdi]\n");
+      if (node->type->ty != ARRAY)  // ARRAYの時はアドレス自体がpushされる
+        {
+          if(node->type->ty == CHAR)
+          {
+            printf ("  movsx eax, BYTE PTR [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else if(node->type->ty == INT)
+          {
+            printf ("  mov eax, DWORD PTR [rax]\n");
+            printf ("  movsx rax, eax\n");
+          }
+          else
+          {
+            printf ("  mov rax, [rax]\n");
+          }
+          printf ("  push rax\n");
+        }
+      return ;
     }
 
   gen (node->lhs);

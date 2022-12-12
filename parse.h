@@ -29,9 +29,11 @@ typedef struct Type Type;
 // 変数の型の種類
 struct Type
 {
-  enum { INT, PTR, ARRAY, CHAR } ty;
+  enum { INT, PTR, ARRAY, CHAR, STRUCT } ty;
   struct Type *ptr_to;
   size_t array_size;
+  char *struct_name;
+  int struct_name_len;
 };
 
 
@@ -55,6 +57,7 @@ typedef enum
   ND_ASSIGN,			// =
   ND_LVAR,			// local variable
   ND_GVAR,    // global variable
+  ND_FUNC,    // function
   ND_LAND,    // &&
   ND_LOR,     // ||
   ND_EQL,			// ==
@@ -77,6 +80,7 @@ typedef enum
   ND_ADDR,			// &(address)
   ND_DEREF,			// *(dereference)
   ND_DEFIDENT,			// define identity
+  ND_DOT,       // . operetor
   ND_STR, 			// string literal
 } NodeKind;
 
@@ -134,6 +138,26 @@ struct StrLit
   int id;
 };
 
+typedef struct StructMember StructMember;
+struct StructMember
+{
+  StructMember *next;
+  char *name;
+  int len;
+  int offset;
+  Type *type;
+};
+
+typedef struct Struct Struct;
+struct Struct
+{
+  Struct *next;
+  char *name;
+  int len;
+  int size;
+  StructMember *member;
+};
+
 
 // 入力プログラム
 extern char *user_input;
@@ -153,6 +177,9 @@ extern LVar *locals;
 
 // 文字列リテラル
 extern StrLit *strlits;
+
+// struct
+extern Struct *structs;
 
 #define IS_NUM(T)      ((T)->ty == INT   || (T)->ty == CHAR)
 #define IS_PTR(T)      ((T)->ty == PTR)

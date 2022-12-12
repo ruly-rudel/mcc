@@ -21,6 +21,9 @@ LVar *locals = NULL;
 StrLit *strlits = NULL;
 int strlit_num = 0;
 
+// structs
+Struct *structs = NULL;
+
 bool at_eof ();
 
 // エラーの起きた場所を報告するための関数
@@ -165,6 +168,18 @@ find_strlit_from_id(int id)
   return NULL;
 }
 
+Struct *
+find_struct( char *struct_name, int struct_name_len )
+{
+  for (Struct *stru = structs; stru; stru = stru->next)
+  {
+    if(stru->len == struct_name_len && !memcmp(stru->name, struct_name, struct_name_len))
+    {
+      return stru;
+    }
+  }
+  return NULL;
+}
 
 
 bool
@@ -319,6 +334,7 @@ char *tokens[] = {
   "!=",
   "<=",
   ">=",
+  "->",
   "+",
   "-",
   "*",
@@ -335,6 +351,7 @@ char *tokens[] = {
   "&",
   "[",
   "]",
+  ".",
 };
 
 char *keywords[] = {
@@ -346,6 +363,7 @@ char *keywords[] = {
   "int",
   "char",
   "sizeof",
+  "struct",
 };
 
 // 入力文字列pをトークナイズしてそれを返す
@@ -540,8 +558,9 @@ Node *mul ();
 Node *commas ();
 int argdefs ();
 Token *argdef ();
-Node *array ();
+Node *postfix ();
 Node *primary ();
+Node *cast ();
 Node *unary ();
 
 
@@ -617,6 +636,7 @@ void
 program ()
 {
   int i;
+  Token *tok;
   for (i = 0; !at_eof (); i++)
     {
       Type *type_root = calloc (1, sizeof (Type));
@@ -627,6 +647,20 @@ program ()
       else if(consume ("char"))
       {
         type_root->ty = CHAR;
+      }
+      else if(consume ("struct"))
+      {
+        type_root->ty = STRUCT;
+        tok = consume_ident();
+        if(tok)
+        {
+          type_root->struct_name = tok->str;
+          type_root->struct_name_len = tok->len;
+        }
+        else
+        {
+          error_at(token->str, "struct名が必要です。");
+        }
       }
       else
       {
@@ -640,7 +674,7 @@ program ()
           type->ptr_to = type_root;
           type_root = type;
         }
-      Token *tok = consume_ident ();
+      tok = consume_ident ();
       if (tok)
         {
           if(consume ("("))  // function definition
@@ -732,9 +766,83 @@ program ()
             globals = global;
           }
         }
-      else
+      else  // struct
         {
-          error_at (token->str, "関数名または変数名が必要です");
+          if(type_root->ty == STRUCT)
+          {
+            expect ("{");
+            Struct *stru = calloc(1, sizeof (Struct));
+            stru->name = type_root->struct_name;
+            stru->len  = type_root->struct_name_len;
+
+            while(!consume ("}"))
+            {
+              StructMember *stru_mem = calloc(1, sizeof (StructMember));
+              type_root = calloc (1, sizeof (Type));
+              if(consume ("int"))
+              {
+                type_root->ty = INT;
+              }
+              else if(consume ("char"))
+              {
+                type_root->ty = CHAR;
+              }
+              else if(consume ("struct"))
+              {
+                type_root->ty = STRUCT;
+                tok = consume_ident();
+                if(tok)
+                {
+                  type_root->struct_name = tok->str;
+                  type_root->struct_name_len = tok->len;
+                }
+                else
+                {
+                  error_at(token->str, "struct名が必要です。");
+                }
+              }
+              else
+              {
+                error_at(token->str, "型名が必要です。");
+              }
+
+              while (consume ("*"))
+                {
+                  Type *type = calloc (1, sizeof (Type));
+                  type->ty = PTR;
+                  type->ptr_to = type_root;
+                  type_root = type;
+                }
+
+              tok = consume_ident ();
+              if (tok)
+              {
+                stru_mem = calloc(1, sizeof (StructMember));
+                stru_mem->name = tok->str;
+                stru_mem->len  = tok->len;
+                stru_mem->type = type_root;
+                stru_mem->offset = stru->member ? stru->member->offset + type_size(stru->member->type) : 0;
+
+                stru_mem->next = stru->member;
+                stru->member = stru_mem;
+              }
+              else
+              {
+                error_at (token->str, "メンバ名が必要です");
+              }
+
+              expect(";");
+            }
+
+            stru->size = stru->member ? stru->member->offset + type_size(stru->member->type) : 0;
+            stru->next = structs;
+            structs = stru;
+            expect (";");
+          }
+          else
+          {
+            error_at (token->str, "関数名または変数名が必要です");
+          }
         }
     }
 }
@@ -984,6 +1092,370 @@ add ()
 }
 
 
+
+Node *
+mul ()
+{
+  Node *node = cast ();
+  infer_type (node);
+
+  for (;;)
+    {
+      if (consume ("*"))
+        {
+          node = new_node (ND_MUL, node, cast ());
+          infer_type (node);
+        }
+      else if (consume ("/"))
+        {
+          node = new_node (ND_DIV, node, cast ());
+          infer_type (node);
+        }
+      else
+        {
+          return node;
+        }
+    }
+}
+
+Node *
+commas ()
+{
+  Node *node = NULL;
+  node = calloc (1, sizeof (Node));
+  node->kind = ND_COMMA;
+  node->lhs = expr ();
+  if (look_at (","))
+    {
+      expect (",");
+      node->rhs = commas ();
+      return node;
+    }
+  else
+    {
+      node->rhs = NULL;
+      return node;
+    }
+}
+
+int
+argdefs ()
+{
+  if (argdef ())
+    {
+      if (consume (","))
+        {
+          return argdefs () + 1;
+        }
+      else if (consume (")"))
+        {
+          return 1;
+        }
+    }
+  if (consume (")"))
+    {
+      return 0;
+    }
+
+  return -1;
+}
+
+
+
+Token *
+argdef ()
+{
+  Type *type_root = NULL;
+  Token *tok = NULL;
+  if (consume ("int"))
+    {
+      type_root = calloc (1, sizeof (Type));
+      type_root->ty = INT;
+    }
+  else if(consume ("char"))
+    {
+      type_root = calloc (1, sizeof (Type));
+      type_root->ty = CHAR;
+    }
+  else if(consume ("struct"))
+    {
+      type_root = calloc (1, sizeof (Type));
+      type_root->ty = STRUCT;
+      tok = consume_ident();
+      if(tok)
+      {
+        type_root->struct_name = tok->str;
+        type_root->struct_name_len = tok->len;
+      }
+      else
+      {
+        error_at(token->str, "struct名が必要です。");
+      }
+    }
+  else
+    {
+      return NULL;
+    }
+
+  while (consume ("*"))
+    {
+      Type *type = calloc (1, sizeof (Type));
+      type->ty = PTR;
+      type->ptr_to = type_root;
+      type_root = type;
+    }
+
+  tok = consume_ident ();
+
+  if (tok)
+    {
+      if (consume ("["))
+        {
+          int array_size = expect_number ();
+          expect ("]");
+
+          Type *type = calloc (1, sizeof (Type));
+          type->ty = ARRAY;
+          type->ptr_to = type_root;
+          type->array_size = array_size;
+          type_root = type;
+        }
+
+      LVar *lvar = calloc (1, sizeof (LVar));
+      lvar->next = locals;
+      lvar->name = tok->str;
+      lvar->len = tok->len;
+      lvar->offset = locals ? locals->offset + type_size(type_root) : 8;
+      lvar->type = type_root;
+      locals = lvar;
+    }
+  else
+    {
+      error_at (tok->str, "識別子が必要です");
+    }
+
+  return tok;
+}
+
+
+StructMember *
+find_struct_member(StructMember *member, char *str, int len)
+{
+  for(; member; member = member->next)
+  {
+    if(member->len == len && !memcmp(member->name, str, len))
+    {
+      return member;
+    }
+  }
+
+  return NULL;
+}
+
+Node *
+postfix ()
+{
+  Node *lhs = primary();
+  for(;;)
+  {
+    if (consume("["))
+    {
+      Node *rhs = expr ();
+      expect ("]");
+      Node *add_node = new_node(ND_ADD, lhs, rhs);
+      infer_type(add_node);
+      Node *deref_node = new_node(ND_DEREF, add_node, NULL);
+      infer_type(deref_node);
+      lhs = deref_node;
+    }
+    else if (consume ("("))
+    {
+      Type *ty = lhs->type;
+      lhs = new_node (ND_CALL, lhs, look_at (")") ? NULL : commas ());
+      lhs->type = ty;
+      expect (")");
+    }
+    else if (consume ("."))
+    {
+      if (lhs->type->ty == STRUCT)
+      {
+        Struct *stru = find_struct(lhs->type->struct_name, lhs->type->struct_name_len);
+        Token *tok = consume_ident();
+        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        if(member)
+        {
+          lhs = new_node (ND_DOT, lhs, new_node_num(member->offset));
+          lhs->type = member->type;
+        }
+        else
+        {
+          error_at(tok->str, "構造体のメンバに存在しません");
+        }
+      }
+      else
+      {
+        error_at(token->str, ".オペレータの対象は構造体でなくてはいけません");
+      }
+    }
+    else if (consume ("->"))
+    {
+      if (lhs->type->ty == PTR && lhs->type->ptr_to->ty == STRUCT)
+      {
+        Struct *stru = find_struct(lhs->type->ptr_to->struct_name, lhs->type->ptr_to->struct_name_len);
+        Token *tok = consume_ident();
+        StructMember *member = find_struct_member(stru->member, tok->str, tok->len);
+        if(member)
+        {
+          lhs = new_node (ND_DEREF, lhs, NULL);
+          lhs = new_node (ND_DOT, lhs, new_node_num(member->offset));
+          lhs->type = member->type;
+        }
+        else
+        {
+          error_at(tok->str, "構造体のメンバに存在しません");
+        }
+      }
+      else
+      {
+        error_at(token->str, "->オペレータの対象は構造体へのポインタでなくてはいけません");
+      }
+    }
+    else
+    {
+      return lhs;
+    }
+  }
+}
+
+Node *
+primary ()
+{
+  // 次のトークンが"("なら、"(" expr ")"のはず
+  if (consume ("("))
+    {
+      Node *node = expr ();
+      expect (")");
+      return node;
+    }
+
+  // or identity?
+  Token *tok = consume_ident ();
+  if (tok)
+    {
+      Node *node = calloc (1, sizeof (Node));
+      LVar *lvar = find_lvar (tok);
+      if (lvar)
+        {
+          node->kind = ND_LVAR;
+          node->offset = lvar->offset;
+          node->type = lvar->type;
+        }
+      else
+        {
+          GVar *global = find_global (tok);
+          if(global)
+          {
+            node->kind = ND_GVAR;
+            node->identity = global->name;
+            node->type = global->type;
+          }
+          else
+          {
+            Func *func = find_func (tok);
+            if (func)
+              {
+                node->kind = ND_FUNC;
+                node->identity = func->name;
+                node->type = func->type;
+              }
+            else
+              {
+                error_at (tok->str, "宣言されていません。");
+              }
+          }
+        }
+      return node;
+    }
+
+    // or string ?
+  if (consume ("\""))
+    {
+      tok = consume_string();
+      Node *node = calloc(1, sizeof (Node));
+      node->kind = ND_STR;
+      node->offset = strlit_num;
+      infer_type(node);
+
+      StrLit *strlit = calloc(1, sizeof(StrLit));
+      strlit->id = strlit_num;
+      strlit->str = calloc(tok->len + 1, 1);
+      memcpy (strlit->str, tok->str, tok->len);
+      strlit->str[tok->len] = '\0';
+      expect("\"");
+      strlit_num++;
+      strlit->next = strlits;
+      strlits = strlit;
+
+      return node;
+    }
+
+    // or char ?
+    if (consume("'"))
+    {
+      Node *node = new_node_num (expect_number ());
+      infer_type (node);
+      node->type->ty = CHAR;
+      expect("'");
+
+      return node;
+    }
+
+  // そうでなければ数値のはず
+  return new_node_num (expect_number ());
+}
+
+Node *
+cast ()
+{
+  return unary ();
+}
+
+Node *
+unary ()
+{
+  Node *node;
+  if (consume ("+"))
+    {
+      return cast ();
+    }
+  if (consume ("-"))
+    {
+      node = new_node (ND_SUB, new_node_num (0), cast ());
+      infer_type (node);
+      return node;
+    }
+  if (consume ("*"))
+    {
+      node = new_node (ND_DEREF, cast (), NULL);
+      infer_type (node);
+      return node;
+    }
+  if (consume ("&"))
+    {
+      node = new_node (ND_ADDR, cast (), NULL);
+      infer_type (node);
+      return node;
+    }
+  if (consume ("sizeof"))
+    {
+      node = unary ();
+      infer_type (node);
+      return new_node_num (type_size(node->type));
+    }
+  return postfix ();
+}
+
+
 Type *
 infer_type (Node * node)
 {
@@ -1001,7 +1473,7 @@ infer_type (Node * node)
         {
           node->type->ty = INT;
         }
-      else if ((IS_PTR(lhs_type) && IS_NUM(rhs_type)) || 
+      else if ((IS_PTR(lhs_type) && IS_NUM(rhs_type)) ||
                (IS_ARR(lhs_type) && IS_NUM(rhs_type)))
         {
           node->type->ty = PTR;
@@ -1103,74 +1575,6 @@ infer_type (Node * node)
   return node->type;
 }
 
-Node *
-mul ()
-{
-  Node *node = unary ();
-  infer_type (node);
-
-  for (;;)
-    {
-      if (consume ("*"))
-        {
-          node = new_node (ND_MUL, node, array ());
-          infer_type (node);
-        }
-      else if (consume ("/"))
-        {
-          node = new_node (ND_DIV, node, array ());
-          infer_type (node);
-        }
-      else
-        {
-          return node;
-        }
-    }
-}
-
-Node *
-commas ()
-{
-  Node *node = NULL;
-  node = calloc (1, sizeof (Node));
-  node->kind = ND_COMMA;
-  node->lhs = expr ();
-  if (look_at (","))
-    {
-      expect (",");
-      node->rhs = commas ();
-      return node;
-    }
-  else
-    {
-      node->rhs = NULL;
-      return node;
-    }
-}
-
-int
-argdefs ()
-{
-  if (argdef ())
-    {
-      if (consume (","))
-        {
-          return argdefs () + 1;
-        }
-      else if (consume (")"))
-        {
-          return 1;
-        }
-    }
-  if (consume (")"))
-    {
-      return 0;
-    }
-
-  return -1;
-}
-
-
 int
 type_size (Type * t)
 {
@@ -1189,6 +1593,11 @@ type_size (Type * t)
           return 8 * t->array_size;
         }
     }
+  else if(t->ty == STRUCT)
+  {
+    Struct *stru = find_struct( t->struct_name, t->struct_name_len );
+    return stru->size;
+  }
   else if(t->ty == CHAR)
     {
       return 1;
@@ -1201,224 +1610,4 @@ type_size (Type * t)
     {
       return 8;
     }
-}
-
-Token *
-argdef ()
-{
-  Type *type_root = NULL;
-  if (consume ("int"))
-    {
-      type_root = calloc (1, sizeof (Type));
-      type_root->ty = INT;
-    }
-  else if(consume ("char"))
-    {
-      type_root = calloc (1, sizeof (Type));
-      type_root->ty = CHAR;
-    }
-  else
-    {
-      return NULL;
-    }
-
-  while (consume ("*"))
-    {
-      Type *type = calloc (1, sizeof (Type));
-      type->ty = PTR;
-      type->ptr_to = type_root;
-      type_root = type;
-    }
-  Token *tok = consume_ident ();
-
-  if (tok)
-    {
-      if (consume ("["))
-        {
-          int array_size = expect_number ();
-          expect ("]");
-
-          Type *type = calloc (1, sizeof (Type));
-          type->ty = ARRAY;
-          type->ptr_to = type_root;
-          type->array_size = array_size;
-          type_root = type;
-        }
-
-      LVar *lvar = calloc (1, sizeof (LVar));
-      lvar->next = locals;
-      lvar->name = tok->str;
-      lvar->len = tok->len;
-      lvar->offset = locals ? locals->offset + type_size(type_root) : 8;
-      lvar->type = type_root;
-      locals = lvar;
-    }
-  else
-    {
-      error_at (tok->str, "識別子が必要です");
-    }
-
-  return tok;
-}
-
-Node *
-array ()
-{
-  Node *lhs = primary();
-  while (consume("["))
-  {
-    Node *rhs = expr ();
-    expect ("]");
-    Node *add_node = new_node(ND_ADD, lhs, rhs);
-    infer_type(add_node);
-    Node *deref_node = new_node(ND_DEREF, add_node, NULL);
-    infer_type(deref_node);
-    lhs = deref_node;
-  }
-  return lhs;
-}
-
-Node *
-primary ()
-{
-  // 次のトークンが"("なら、"(" expr ")"のはず
-  if (consume ("("))
-    {
-      Node *node = expr ();
-      expect (")");
-      return node;
-    }
-
-  // or identity?
-  Token *tok = consume_ident ();
-  if (tok)
-    {
-      if (look_at ("("))
-        {			// funcation call
-          consume ("(");
-          Node *node = calloc (1, sizeof (Node));
-          node->kind = ND_CALL;
-          Func *func = find_func (tok);
-          if (func)
-            {
-              node->type = func->type;
-            }
-          else
-            {
-              warn_at (tok->str, "宣言されていない関数です。");
-              node->type = calloc (1, sizeof (Type));
-              node->type->ty = INT;
-            }
-          if (look_at (")"))
-            {
-              node->lhs = NULL;
-            }
-          else
-            {
-              node->lhs = commas ();
-            }
-          node->identity = calloc (1, tok->len + 1);
-          memcpy (node->identity, tok->str, tok->len);
-          node->identity[tok->len] = '\0';
-          expect (")");
-          return node;
-        }
-      else
-        {
-          Node *node = calloc (1, sizeof (Node));
-          LVar *lvar = find_lvar (tok);
-          if (lvar)
-            {
-              node->kind = ND_LVAR;
-              node->offset = lvar->offset;
-              node->type = lvar->type;
-            }
-          else
-            {
-              GVar *global = find_global (tok);
-              if(global)
-              {
-                node->kind = ND_GVAR;
-                node->identity = global->name;
-                node->type = global->type;
-              }
-              else
-              {
-                error_at (tok->str, "宣言されていません。");
-              }
-            }
-          return node;
-        }
-    }
-
-    // or string ?
-  if (consume ("\""))
-    {
-      tok = consume_string();
-      Node *node = calloc(1, sizeof (Node));
-      node->kind = ND_STR;
-      node->offset = strlit_num;
-      infer_type(node);
-
-      StrLit *strlit = calloc(1, sizeof(StrLit));
-      strlit->id = strlit_num;
-      strlit->str = calloc(tok->len + 1, 1);
-      memcpy (strlit->str, tok->str, tok->len);
-      strlit->str[tok->len] = '\0';
-      expect("\"");
-      strlit_num++;
-      strlit->next = strlits;
-      strlits = strlit;
-
-      return node;
-    }
-
-    // or char ?
-    if (consume("'"))
-    {
-      Node *node = new_node_num (expect_number ());
-      infer_type (node);
-      node->type->ty = CHAR;
-      expect("'");
-
-      return node;
-    }
-
-  // そうでなければ数値のはず
-  return new_node_num (expect_number ());
-}
-
-Node *
-unary ()
-{
-  Node *node;
-  if (consume ("+"))
-    {
-      return array ();
-    }
-  if (consume ("-"))
-    {
-      node = new_node (ND_SUB, new_node_num (0), array ());
-      infer_type (node);
-      return node;
-    }
-  if (consume ("*"))
-    {
-      node = new_node (ND_DEREF, unary (), NULL);
-      infer_type (node);
-      return node;
-    }
-  if (consume ("&"))
-    {
-      node = new_node (ND_ADDR, unary (), NULL);
-      infer_type (node);
-      return node;
-    }
-  if (consume ("sizeof"))
-    {
-      node = unary ();
-      infer_type (node);
-      return new_node_num (type_size(node->type));
-    }
-  return array ();
 }
